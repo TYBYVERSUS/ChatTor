@@ -46,9 +46,7 @@ server {
 
 Obviously, replace the .onion with your clearnet or onion domain, replace the port numbers as necessary, and (hopefully) set your log file to /dev/null so no logs are kept.
 
-##### IMPORTANT NOTE
-
-Your web server port and the web socket server port need to be different. In this case, NGINX is port 80 and the web socket server is port 8080.
+**IMPORTANT**: Your web server port and the web socket server port need to be different. In this case, NGINX is port 80 and the web socket server is port 8080.
 
 
 ### 3) Start the web socket server
