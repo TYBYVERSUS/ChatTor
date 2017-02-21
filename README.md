@@ -24,21 +24,21 @@ Now, before we run the web socket server, we have to set up our web server. I hi
 
 Here is an example of how your NGINX config should look, with the "location" block being the magic part required to make the web sockets work:
 
-server {
-	listen 80;
+	server {
+		listen 80;
 
-	root /var/www/chattor;
-	server_name chattorci7bcgygp.onion;
+		root /var/www/chattor;
+		server_name chattorci7bcgygp.onion;
 
-	location /ws/chat/{
-		proxy_read_timeout 31536000;
-		proxy_connect_timeout 31536000;
+		location /ws/chat/{
+			proxy_read_timeout 31536000;
+			proxy_connect_timeout 31536000;
 
-		proxy_pass http://127.0.0.1:8080;
+			proxy_pass http://127.0.0.1:8080;
+		}
+
+		access_log /dev/null refs;
 	}
-
-	access_log /dev/null refs;
-}
 
 Obviously, replace the .onion with your clearnet or onion domain, replace the port numbers as necessary, and (hopefully) set your log file to /dev/null so no logs are kept.
 
