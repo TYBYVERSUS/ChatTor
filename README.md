@@ -14,11 +14,7 @@ If you have any patches, questions, or any general input, feel free to contact m
 
 ### 1) Compile the web socket server
 
-This source can be compiled using make, which most of you should already be familiar with. There is no configure script (yet), so installing is as easy as:
-
-  make socket
-
-There is currently no "make install", but that will hopefully change in the future.
+This source can be compiled using make, which most of you should already be familiar with. There is no configure script (yet), so installing is as easy as `make socket`. There is currently no `make install`, but that will hopefully change in the future.
 
 
 
@@ -52,15 +48,7 @@ Obviously, replace the .onion with your clearnet or onion domain, replace the po
 ### 3) Start the web socket server
 
 
-Finally, to run your newly-compiled web socket server, type:
-
-  ./bin/web_socket_server 8080
-
-If you'd like to run the process via SSH or a local terminal and be able to exit the session without killing the process, instead use
-
-  nohup ./bin/web_socket_server 8080 &
-
-There are currently no service files for systemd nor any other init system, but, again this will likely change as the install process improves.
+Finally, to run your newly-compiled web socket server, type `./bin/web_socket_server 8080`. If you'd like to run the process via SSH or a local terminal and be able to exit the session without killing the process, instead use `nohup ./bin/web_socket_server 8080 &`. There are currently no service files for systemd nor any other init system, but, again this will likely change as the install process improves.
 
 
 # Conclusion
