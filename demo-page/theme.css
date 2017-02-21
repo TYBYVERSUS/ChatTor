@@ -1,0 +1,239 @@
+body{
+	background: #000;
+	color: #FFF;
+	font-size: 14px;
+}
+
+a{
+	color: #FFF;
+}
+
+a:hover{
+	color: #5F5;
+}
+
+button{
+	background: #000;
+	border: 2px solid #FFF;
+	border-radius: 7px;
+	color: #FFF;
+	font-size: 14px;
+	padding: 2px 5px;
+}
+
+button[disabled]{
+	border-color: #AAA;
+	color: #AAA;
+}
+
+button:hover:not([disabled]){
+	cursor: pointer;
+	border-color: #5F5;
+}
+
+label:hover{
+	cursor: pointer;
+	color: #5F5;
+}
+
+img[src="/logo.svg"]{
+	height: 55px;
+	margin-right: 2px;
+}
+
+input[type="text"]{
+	background: #000;
+	border: 1px solid #FFF;
+	border-radius: 7px;
+	color: #FFF;
+	padding: 2px 5px;
+}
+
+input[type="text"][disabled]{
+	background: #222;
+	border-color: #222;
+}
+
+input[type="text"]:not([disabled]):hover,
+input[type="text"]:not([disabled]):focus{
+	border-color: #5F5;
+}
+
+input[type="submit"]{
+	display: none;
+}
+
+.hide{
+	display: none;
+}
+
+#body{
+	margin: 0 auto;
+	max-width: 1100px;
+	padding: 20px;
+	width: calc(100% - 40px);
+}
+
+#banner > a:first-child{
+	font: normal 50px "Verdana";
+	margin-right: 15px;
+	text-decoration: none;	
+}
+
+#tabs{
+	padding-top: 20px;
+}
+
+#tabs:not(:empty){
+	border-bottom: 2px solid #FFF;
+	padding-bottom: 2px;
+}
+
+#tabs > span{
+	border: 2px solid #888;
+	border-bottom-width: 0;
+	border-radius: 5px 5px 0 0;
+	color: #888;
+	cursor: pointer;
+	display: inline-block;
+	margin: 0 0 -2px 5px;
+	padding: 2px 5px;
+}
+
+#tabs > span.selected{
+	border-color: #FFF;
+	color: #FFF;
+}
+
+#tabs > span.new_message{
+	color: #5F5;
+}
+
+#tabs > span.invited{
+	border-color: #FF0;
+	color: #FF0;
+}
+
+#tabs > span > span{
+	color: #5F5;
+}
+
+#tabs > span:not(.selected) > span{
+	display: none;
+}
+
+#rooms{
+	padding-bottom: 30px;
+}
+
+#rooms > div:not(.selected){
+	display: none;
+}
+
+#rooms > div:last-child{
+	margin-top: 13px;
+	overflow-y: auto;
+}
+
+#rooms > div:last-child > div{
+	display: inline-block;
+	vertical-align: top;
+}
+
+#rooms > div:last-child label,
+#rooms > div:last-child input[type="text"]{
+	margin-top: 7px;
+}
+
+#rooms > div > input[type="text"]:last-child{
+	width: 100%;
+}
+
+#rooms .options{
+	border: 1px solid #FFF;
+	border-top-width: 0;
+	display: none;
+	font-size: 12px;
+	line-height: 10px;
+	padding: 15px;
+}
+
+#rooms .options button{
+	padding: 0 2px;
+}
+
+#rooms .messages{
+	margin-top: 8px;
+}
+
+#rooms .greentext{
+	color: #5F5;
+}
+
+#new_tab_notification{
+	font-weight: 700;
+	margin-bottom: 7px;
+}
+
+#new_tab_notification:empty{
+	display: none;
+}
+
+.messages{
+	display: inline-block;
+	height: 350px;
+	max-width: 900px;
+	overflow-y: auto;
+	width: calc(100% - 230px);
+}
+
+.last{
+	margin-bottom: 15px;
+}
+
+.info{
+	display: inline-block;
+	height: 350px;
+	margin-top: 8px;
+	width: 230px;
+	overflow-y: auto;
+	vertical-align: top;
+}
+
+.roomname{
+	font-size: 16px;
+	font-weight: 700;
+	text-align: center;
+}
+
+.timestamp{
+	color: #BBB;
+	font-size: 0.875em;
+}
+
+.userlist{
+	display: inline-block;
+	margin: 5px 0;
+}
+
+.userlist > li:first-child{
+	color: #FFD700;
+	font-weight: 700;
+}
+
+.userlist > li:first-child + li{
+	color: #C0C0C0;
+	font-weight: 700;
+}
+
+.userlist > li:first-child + li + li{
+	color: #CD7F32 ;
+	font-weight: 700;
+	margin-bottom: 7px;
+}
+
+.userlist > li:first-child > span,
+.userlist > li:first-child + li > span,
+.userlist > li:first-child + li + li > span{
+	font-weight: normal;
+}
