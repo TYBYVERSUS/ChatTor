@@ -763,6 +763,10 @@ int main(int argc, char *argv[]){
 
 				char *id = msg + 6;
 				char *tmp = strstr(id, " ");
+
+				if(tmp == NULL)
+					continue;
+
 				tmp[0] = 0;
 
 				unsigned char offset = 7 + strlen(id);
