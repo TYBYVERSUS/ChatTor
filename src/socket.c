@@ -26,6 +26,7 @@ unsigned int nameSeed;
 void* srealloc(void* ptr, size_t size){
 	void *mem = realloc(ptr, size+1);
 	if(!ptr || !mem){
+		free(ptr);
 		printf("realloc() error!");
 		exit(1);
 	}
@@ -35,6 +36,7 @@ void* srealloc(void* ptr, size_t size){
 void* smalloc(size_t size){
 	void *mem = malloc(size+1);
 	if(!mem){
+		free(mem);
 		printf("malloc() failed!");
 		exit(1);
 	}
@@ -59,7 +61,7 @@ void urlStringChop(char** string, unsigned long len){
 			// Now, if this character is URL-encoded and the hex digits are between greater than 0x7F and less than 0xC0, this character is actually part of a unicode character and doesn't count towards the string total
 			if(!((*string)[offset+1] == 56 || (*string)[offset+1] == 57 || (*string)[offset+1] == 65 || (*string)[offset+1] == 66 || (*string)[offset+1] == 97 || (*string)[offset+1] == 98))
 				i++;
-			
+
 			if(i <= len)
 				offset += 2;
 		}else
@@ -122,6 +124,7 @@ void sendToRoom(char *msg, char *room){
 		send(each->identity->socket->id, encoded, len, MSG_NOSIGNAL);
 		each = each->right;
 	}
+	free(encoded);
 }
 
 // This is the function to call when a connection has been closed
@@ -138,7 +141,6 @@ void close_socket(int fd){
 		struct roomBST *rNode = sIdentity->identity->room;
 		struct identityBST *rIdentity = searchIdentity(rNode->identities, sIdentity->index);
 
-		// Possibly not freeing everything properly here? Possible memory leak?
 		removeIdentity(&rNode->identities, rIdentity);
 
 		if(rNode->identities == NULL)
@@ -151,10 +153,10 @@ void close_socket(int fd){
 			free(bye);
 		}
 
-		removeIdentity(&sNode->identities, sIdentity);
 		free(sIdentity->identity->name);
 		free(sIdentity->identity->color);
 		free(sIdentity->identity);
+		removeIdentity(&sNode->identities, sIdentity);
 		sIdentity = sNode->identities;
 	}
 
@@ -173,7 +175,7 @@ char* getNameColor(char* name){
 	}
 
 */
-	
+
 	unsigned int seed = nameSeed;
 	unsigned short i, len = strlen(name);
 
@@ -215,7 +217,7 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
-	unsigned char e, lsocket, val = 1;
+	int e, lsocket, val = 1;
 	struct sockaddr_in *in_addr, serv_addr;
 	struct epoll_event event, *events;
 	socklen_t in_len = sizeof in_addr;
@@ -249,6 +251,7 @@ int main(int argc, char *argv[]){
 	events = malloc(sizeof event);
 	if(e == -1){
 		printf("Epoll failed to create?");
+		free(events);
 		return 1;
 	}
 
@@ -256,6 +259,7 @@ int main(int argc, char *argv[]){
 	event.events = EPOLLIN | EPOLLET;
 	if(epoll_ctl(e, EPOLL_CTL_ADD, lsocket, &event) == -1){
 		printf("epoll_ctl() failed for broadcast socket");
+		free(events);
 		return 1;
 	}
 
@@ -269,11 +273,13 @@ int main(int argc, char *argv[]){
 	// Now drops to nobody privileges! Should make own user in perfect world, but I can deal with that later...
 	if(setgid(65534) != 0){
 		printf("Unable to drop group privileges!");
+		free(events);
 		exit(0);
 	}
 
 	if(setuid(65534) != 0){
 		printf("Unable to drop user privileges!");
+		free(events);
 		exit(0);
 	}
 
@@ -300,6 +306,7 @@ int main(int argc, char *argv[]){
 
 			if(epoll_ctl(e, EPOLL_CTL_ADD, event.data.fd, &event) == -1){
 				close(event.data.fd);
+				free(events);
 				return 1;
 			}
 
@@ -333,7 +340,7 @@ int main(int argc, char *argv[]){
 			// Now we hash the tmp buffer with SHA1
 			SHA1((const unsigned char*)tmp, 60, (unsigned char*)tmp);
 			strcpy(buffer, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ");
-			
+
 			// And base64_encode it
 			buffer[97] = b64Table[(unsigned char)tmp[0] >> 2];
 			buffer[98] = b64Table[((0x3&(unsigned char)tmp[0])<<4) + ((unsigned char)tmp[1]>>4)];
@@ -547,6 +554,10 @@ int main(int argc, char *argv[]){
 						room = smalloc(4);
 						strcpy(room, "Room");
 						randomSuffix(&room, 36);
+					}else{
+						char *tmp = smalloc(strlen(room));
+						strcpy(tmp, room);
+						room = tmp;
 					}
 					urlStringChop(&room, 40);
 
@@ -554,6 +565,10 @@ int main(int argc, char *argv[]){
 						name = smalloc(5);
 						strcpy(name, "Guest");
 						randomSuffix(&name, 17);
+					}else{
+						char *tmp = smalloc(strlen(name));
+						strcpy(tmp, name);
+						name = tmp;
 					}
 					urlStringChop(&name, 22);
 
@@ -630,6 +645,8 @@ int main(int argc, char *argv[]){
 
 					b = smalloc(63 + strlen(room) + strlen(name));
 					sprintf(b, "%s{\"event\":\"joined\",\"room\":\"%s\",\"user\":\"%s\",\"users\":{", sIdentity->index, room, name);
+					free(room);
+					free(name);
 
 					struct identityBST *users = rNode->identities;
 					while(users != NULL){
@@ -736,7 +753,7 @@ int main(int argc, char *argv[]){
 					struct identityBST* rIdentity = searchIdentity(rNode->identities, msg + 7);
 
 					removeIdentity(&rNode->identities, rIdentity);
-					
+
 					if(rNode->identities == NULL)
 						removeRoom(rNode);
 					else{
@@ -747,9 +764,10 @@ int main(int argc, char *argv[]){
 						free(bye);
 					}
 
-					removeIdentity(&sNode->identities, sIdentity);
+					free(sIdentity->identity->color);
 					free(sIdentity->identity->name);
 					free(sIdentity->identity);
+					removeIdentity(&sNode->identities, sIdentity);
 					continue;
 				}
 
@@ -799,5 +817,6 @@ int main(int argc, char *argv[]){
 		}
 	}
 
+	free(events);
 	return 0;
 }
