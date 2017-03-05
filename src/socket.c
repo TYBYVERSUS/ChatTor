@@ -610,8 +610,11 @@ int main(int argc, char *argv[]){
 							tmp = tmp->right;
 						}
 
-						if(taken)
+						if(taken){
+							free(room);
+							free(name);
 							continue;
+						}
 					}
 
 					char *b = smalloc(4);
