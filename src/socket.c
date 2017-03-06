@@ -124,6 +124,7 @@ void sendToRoom(char *msg, char *room){
 		send(each->identity->socket->id, encoded, len, MSG_NOSIGNAL);
 		each = each->right;
 	}
+
 	free(encoded);
 }
 
@@ -156,7 +157,9 @@ void close_socket(int fd){
 		free(sIdentity->identity->name);
 		free(sIdentity->identity->color);
 		free(sIdentity->identity);
+
 		removeIdentity(&sNode->identities, sIdentity);
+
 		sIdentity = sNode->identities;
 	}
 
@@ -217,7 +220,8 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
-	int e, lsocket, val = 1;
+	int e, lsocket;
+	unsigned char val = 1;
 	struct sockaddr_in *in_addr, serv_addr;
 	struct epoll_event event, *events;
 	socklen_t in_len = sizeof in_addr;
@@ -550,6 +554,7 @@ int main(int argc, char *argv[]){
 					name[0] = 0;
 					name++;
 
+					// Calling smalloc and copying the room/name out of the buffer seems like an inelegant implementation to me... Possibly rework somehow?
 					if(!strlen(room)){
 						room = smalloc(4);
 						strcpy(room, "Room");
@@ -648,6 +653,7 @@ int main(int argc, char *argv[]){
 
 					b = smalloc(63 + strlen(room) + strlen(name));
 					sprintf(b, "%s{\"event\":\"joined\",\"room\":\"%s\",\"user\":\"%s\",\"users\":{", sIdentity->index, room, name);
+
 					free(room);
 					free(name);
 
@@ -690,6 +696,7 @@ int main(int argc, char *argv[]){
 
 					free(b);
 					free(encoded);
+
 					continue;
 				}
 
@@ -737,7 +744,9 @@ int main(int argc, char *argv[]){
 					// Invites don't really care about the exact identity invited, only the user...
 					sprintf(&encoded[2], "{\"invite\":\"%s\",\"event\":\"invite\"}", thisIdentity->identity->room->room);
 					send(rIdentity->identity->socket->id, encoded, strlen(thisIdentity->identity->room->room)+32, MSG_NOSIGNAL);
+
 					free(encoded);
+
 					continue;
 				}
 
@@ -764,13 +773,16 @@ int main(int argc, char *argv[]){
 						bye = smalloc(25 + strlen(sIdentity->identity->name));
 						sprintf(bye, "{\"event\":\"bye\",\"user\":\"%s\"}", sIdentity->identity->name);
 						sendToRoom(bye, sIdentity->identity->room->room);
+
 						free(bye);
 					}
 
 					free(sIdentity->identity->color);
 					free(sIdentity->identity->name);
 					free(sIdentity->identity);
+
 					removeIdentity(&sNode->identities, sIdentity);
+
 					continue;
 				}
 
@@ -809,6 +821,7 @@ int main(int argc, char *argv[]){
 				b = smalloc(strlen(tmp) + strlen(identityNode->identity->name) + 36);
 				sprintf(b, "{\"user\":\"%s\",\"event\":\"chat\",\"data\":\"%s\"}", identityNode->identity->name, tmp);
 				sendToRoom(b, identityNode->identity->room->room);
+
 				free(b);
 				free(tmp);
 			}
@@ -821,5 +834,6 @@ int main(int argc, char *argv[]){
 	}
 
 	free(events);
+
 	return 0;
 }
