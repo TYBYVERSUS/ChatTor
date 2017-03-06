@@ -16,7 +16,6 @@
 // Actually make the BST structs and functions work like real red-black BSTs. Right now, they are Linked Lists
 // Add status feature? (may be possible client-side?)
 // Put specific name colors in external file "colors.txt" or something to prevent recompiling to change name colors
-// May be a small memory leak somewhere. My RAM usage keeps rising, although so does the number of users...
 // Possible trip code feature? Still undecided on exact implenentation
 // Still need to add PING/PONG. Spec is easy, implementation isn't so easy...
 
