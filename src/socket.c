@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/ioctl.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -398,10 +399,10 @@ int main(int argc, char *argv[]){
 			insertSocket(socketNode);
 		}else{
 			// Else, it's just a regular message
-			// Could probably implement this better. I just re-wrote most of this code and haven't been able to comb back through it and improve it yet
+			// Could probably still implement this better...
 			char buffer[4096]={0}, mask[4]={0}, *msg = NULL;
 			long recvlen = 1;
-			short tmplen;
+			int tmplen;
 			unsigned short i, len;
 
 			// For example, this probably shouldn't be an infinite loop
@@ -412,43 +413,25 @@ int main(int argc, char *argv[]){
 					msg = NULL;
 				}
 
-				// Refer to the spec for this part! We read the first 2 bytes of the packet header...
-				recvlen = recv(events[0].data.fd, buffer, 2, 0);
+				// Refer to the spec for this part!
 
-				if(recvlen < 1)
+				// We wait until the first 2 bytes are available or an error is thrown
+				while(!ioctl(events[0].data.fd, FIONREAD, &tmplen) && tmplen == 1){}
+				if(tmplen < 2)
 					break;
 
-				msg = malloc(2);
-				memcpy(msg, buffer, recvlen);
+				recv(events[0].data.fd, buffer, 2, 0);
 
-				while(recvlen < 2){
-					tmplen = recv(events[0].data.fd, buffer, 1, 0);
+				len = ((unsigned char)buffer[1]) % 128;
 
-					if(tmplen < 0 && errno != EWOULDBLOCK && errno != EAGAIN)
-						break;
-
-					if(tmplen == 1){
-						msg[1] = buffer[0];
-						recvlen++;
-					}
-				}
-
-				if(recvlen != 2)
-					break;
-
-				len = ((unsigned char)msg[1]) % 128;
-
-				//  FIN & op = 1       Mask set         len > 0
-				if(msg[0] != -127 || msg[1] > -1 || msg[1] == -128){
+				//   FIN & op = 1          Mask set            len > 0
+				if(buffer[0] != -127 || buffer[1] > -1 || buffer[1] == -128){
 					while(recv(events[0].data.fd, buffer, 4096, 0) > 0){}
 					close_socket(events[0].data.fd);
 					break;
 				}
 
-				len = ((unsigned char)msg[1]) % 128;
-
-				free(msg);
-				msg = NULL;
+				len = ((unsigned char)buffer[1]) % 128;
 
 				// Again, no lengths over 65535. I'm lazy :(
 				if(len == 127)
@@ -456,63 +439,23 @@ int main(int argc, char *argv[]){
 
 				if(len == 126){
 					// If the length is set to 126, the next 2 bytes of the packet header contain the 16-bit payload length
-					recvlen = recv(events[0].data.fd, buffer, 6, 0);
-					msg = malloc(6);
-
-					if(recvlen > 0)
-						memcpy(msg, buffer, recvlen);
-					else
-						recvlen = 0;
-
-					while(recvlen < 6){
-						unsigned char readlen = 6 - recvlen;
-						tmplen = recv(events[0].data.fd, buffer, readlen, 0);
-
-						if(tmplen < 0 && errno != EWOULDBLOCK && errno != EAGAIN)
-							break;
-
-						if(tmplen > 0){
-							memcpy(msg + recvlen, buffer, tmplen);
-							recvlen += tmplen;
-						}
-					}
-
-					if(recvlen != 6)
+					while(!ioctl(events[0].data.fd, FIONREAD, &tmplen) && tmplen < 6){}
+					if(tmplen < 6)
 						break;
 
-					len = (((unsigned char)msg[0]) << 8) + (unsigned char)msg[1];
+					recv(events[0].data.fd, buffer, 6, 0);
 
-					memcpy(mask, &msg[2], 4);
+					len = (((unsigned char)buffer[0]) << 8) + (unsigned char)buffer[1];
+
+					memcpy(mask, &buffer[2], 4);
 				}else{
 					// Else, if the length is set to 125 or less, this is the actual payload length
-					recvlen = recv(events[0].data.fd, buffer, 4, 0);
-					msg = malloc(4);
-
-					if(recvlen > 0)
-						memcpy(msg, buffer, recvlen);
-					else
-						recvlen = 0;
-
-					while(recvlen < 4){
-						unsigned char readlen = 4 - recvlen;
-						tmplen = recv(events[0].data.fd, buffer, readlen, 0);
-
-						if(tmplen < 0 && errno != EWOULDBLOCK && errno != EAGAIN)
-							break;
-
-						if(tmplen > 0){
-							memcpy(msg + recvlen, buffer, tmplen);
-							recvlen += tmplen;
-						}
-					}
-
-					if(recvlen != 4)
+					while(!ioctl(events[0].data.fd, FIONREAD, &tmplen) && tmplen < 4){}
+					if(tmplen < 4)
 						break;
 
-					memcpy(mask, msg, 4);
+					recv(events[0].data.fd, mask, 4, 0);
 				}
-
-				free(msg);
 
 				// Now to read the actual payload (chat message)
 				recvlen = 0;
@@ -596,7 +539,6 @@ int main(int argc, char *argv[]){
 					}else{
 						// Make sure the name isn't already being used in that room...
 						struct identityBST* tmp = rNode->identities;
-						unsigned char taken = 0;
 
 						while(tmp != NULL){
 							if(strcmp(tmp->identity->name, name) == 0 && strlen(name) == strlen(tmp->identity->name)){
@@ -608,14 +550,13 @@ int main(int argc, char *argv[]){
 								send(events[0].data.fd, encoded, 59, MSG_NOSIGNAL);
 
 								free(encoded);
-								taken = 1;
 								break;
 							}
 
 							tmp = tmp->right;
 						}
 
-						if(taken){
+						if(tmp != NULL){
 							free(room);
 							free(name);
 							continue;
