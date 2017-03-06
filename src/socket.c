@@ -298,7 +298,7 @@ int main(int argc, char *argv[]){
 		else if(lsocket == events[0].data.fd){
 			// Else, if the active socket is the broadcast socket, then we have a new connection
 			// I can handle this so much better, but I don't have the time to fix this right now. Sorry :(
-			char buffer[512]={0}, tmp[256]={0}, *nl;
+			char buffer[1024]={0}, tmp[256]={0}, *nl;
 			short len = 1;
 
 			// Accepting the new socket
@@ -315,10 +315,10 @@ int main(int argc, char *argv[]){
 			}
 
 			// Now we have to read the headers. Did this incorrectly in the past, and will handle this properly some day...
-			len = recv(event.data.fd, buffer, 511, MSG_WAITALL);
+			len = recv(event.data.fd, buffer, 1023, MSG_WAITALL);
 
-			if(len == 511 || len < 1){
-				while(recv(event.data.fd, buffer, 511, MSG_WAITALL) > 0){}
+			if(len == 1023 || len < 1){
+				while(recv(event.data.fd, buffer, 1023, MSG_WAITALL) > 0){}
 
 				close(event.data.fd);
 				continue;
