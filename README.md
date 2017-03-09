@@ -1,14 +1,3 @@
-# General Info
-
-Don't have much to say other than thank you for downloading my code. It's far from perfect, but I hope that you'll find it to be useful to you.
-
-This code is licensed under the WTFPL (http://www.wtfpl.net/), and, although it's not required, I do appreciate donations.
-
-I suppose one last thing I should mention is that I may be hosting this source via git soon. I'll try setting it up when I have the time.
-
-If you have any patches, questions, or any general input, feel free to contact me. My contact information is in the FAQ: http://chattorci7bcgygp.onion/faq.htm
-
-
 # How to Install
 
 
@@ -45,15 +34,16 @@ Obviously, replace the .onion with your clearnet or onion domain, replace the po
 **IMPORTANT**: Your web server port and the web socket server port need to be different. In this case, NGINX is port 80 and the web socket server is port 8080.
 
 
-### 3) Start the web socket server
 
+### 3) Start the web socket server
 
 Finally, to run your newly-compiled web socket server, type `./bin/web_socket_server 8080`. If you'd like to run the process via SSH or a local terminal and be able to exit the session without killing the process, instead use `nohup ./bin/web_socket_server 8080 &`. There are currently no service files for systemd nor any other init system, but, again this will likely change as the install process improves.
 
 
+
 # Conclusion
 
-Again, thanks for showing an interest in my source. I'm new to the open-source community, so please be patient with me and, if you have the time, help me to improve my code and my packaging in general
+Thanks for showing an interest in my source. I'm new to the open-source community, so please be patient with me and, if you have the time, help me to improve my code and my packaging in general.
 
 
 Thanks,

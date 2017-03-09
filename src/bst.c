@@ -43,7 +43,7 @@ void insertSocket(struct socketBST *socket){
 	struct socketBST *tmp = sRoot;
 	while(tmp->right != NULL)
 		tmp = tmp->right;
-	
+
 	tmp->right = socket;
 }
 
@@ -56,7 +56,7 @@ void insertIdentity(struct identityBST **root, struct identityBST *identity){
 	struct identityBST *tmp = *root;
 	while(tmp->right != NULL)
 		tmp = tmp->right;
-	
+
 	tmp->right = identity;
 }
 
@@ -69,7 +69,7 @@ void insertRoom(struct roomBST *room){
 	struct roomBST *tmp = rRoot;
 	while(tmp->right != NULL)
 		tmp = tmp->right;
-	
+
 	tmp->right = room;
 }
 
