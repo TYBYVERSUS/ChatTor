@@ -7,7 +7,7 @@ background: black
 ---
 # BST
 
-## Classes
+## Structs
 */
 
 // Forward declarations
@@ -50,7 +50,7 @@ struct socketBST *sRoot = NULL;
 struct roomBST *rRoot = NULL;
 
 
-// ### Inser Socket
+// ### Insert Socket
 void insertSocket(struct socketBST *socket){
 	if(sRoot == NULL){
 		sRoot = socket;

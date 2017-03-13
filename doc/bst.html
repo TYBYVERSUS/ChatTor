@@ -25,13 +25,15 @@
 
 <body>
 <h1> BST</h1>
-<h2> Classes</h2>
+<h2> Structs</h2>
 <p>
  Forward declarations </p>
 
 <pre><code class='cpp'>
 
 struct identityNode;
+
+
 </code></pre>
 <h3> Identity BST</h3>
 <pre><code class='cpp'>
@@ -42,6 +44,8 @@ struct identityBST{
 	struct identityNode *identity;
 	struct identityBST *left, *right;
 };
+
+
 </code></pre>
 <h3> Socket BST</h3>
 <pre><code class='cpp'>
@@ -52,6 +56,8 @@ struct socketBST{
 	struct identityBST *identities;
 	struct socketBST *left, *right;
 };
+
+
 </code></pre>
 <h3> Room BST</h3>
 <pre><code class='cpp'>
@@ -62,6 +68,8 @@ struct roomBST{
 	struct identityBST *identities;
 	struct roomBST *left, *right;
 };
+
+
 </code></pre>
 <h3> Identity node</h3>
 <pre><code class='cpp'>
@@ -71,14 +79,20 @@ struct identityNode{
 	struct socketBST *socket;
 	struct roomBST *room;
 };
+
+
+
 </code></pre>
 <h3> Globobal variables</h3>
 <pre><code class='cpp'>
 
 struct socketBST *sRoot = NULL;
 struct roomBST *rRoot = NULL;
+
+
+
 </code></pre>
-<h3> Inser Socket</h3>
+<h3> Insert Socket</h3>
 <pre><code class='cpp'>
 
 void insertSocket(struct socketBST *socket){
@@ -86,11 +100,15 @@ void insertSocket(struct socketBST *socket){
 		sRoot = socket;
 		return;
 	}
+
 	struct socketBST *tmp = sRoot;
 	while(tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
+
 	tmp-&gt;right = socket;
 }
+
+
 </code></pre>
 <h3> Insert identity</h3>
 <pre><code class='cpp'>
@@ -100,11 +118,15 @@ void insertIdentity(struct identityBST **root, struct identityBST *identity){
 		*root = identity;
 		return;
 	}
+
 	struct identityBST *tmp = *root;
 	while(tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
+
 	tmp-&gt;right = identity;
 }
+
+
 </code></pre>
 <h3> Insert Room</h3>
 <pre><code class='cpp'>
@@ -114,11 +136,15 @@ void insertRoom(struct roomBST *room){
 		rRoot = room;
 		return;
 	}
+
 	struct roomBST *tmp = rRoot;
 	while(tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
+
 	tmp-&gt;right = room;
 }
+
+
 </code></pre>
 <h3> Search Socket</h3>
 <pre><code class='cpp'>
@@ -128,10 +154,14 @@ struct socketBST* searchSocket(int id){
 	while(tmp != NULL){
 		if(tmp-&gt;id == id)
 			return tmp;
+
 		tmp = tmp-&gt;right;
 	}
+
 	return NULL;
 }
+
+
 </code></pre>
 <h3> Search identity</h3>
 <pre><code class='cpp'>
@@ -141,10 +171,14 @@ struct identityBST* searchIdentity(struct identityBST *root, char* id){
 	while(tmp != NULL){
 		if(!strcmp(tmp-&gt;index, id))
 			return tmp;
+
 		tmp = tmp-&gt;right;
 	}
+
 	return NULL;
 }
+
+
 </code></pre>
 <h3> Search Room</h3>
 <pre><code class='cpp'>
@@ -154,10 +188,14 @@ struct roomBST* searchRoom(char* room){
 	while(tmp != NULL){
 		if(!strcmp(tmp-&gt;room, room) &amp;&amp; strlen(room) == strlen(tmp-&gt;room))
 			return tmp;
+
 		tmp = tmp-&gt;right;
 	}
+
 	return NULL;
 }
+
+
 </code></pre>
 <h3> Remove Socket</h3>
 <pre><code class='cpp'>
@@ -165,19 +203,25 @@ struct roomBST* searchRoom(char* room){
 void removeSocket(struct socketBST *socket){
 	if(sRoot == NULL)
 		return;
+
 	struct socketBST* tmp = sRoot;
 	if(sRoot == socket){
 		sRoot = tmp-&gt;right;
 		free(tmp);
 		return;
 	}
+
 	while(tmp-&gt;right != socket &amp;&amp; tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
+
 	if(tmp-&gt;right == NULL)
 		return;
+
 	tmp-&gt;right = socket-&gt;right;
 	free(socket);
 }
+
+
 </code></pre>
 <h3> Remove identity</h3>
 <pre><code class='cpp'>
@@ -185,19 +229,26 @@ void removeSocket(struct socketBST *socket){
 void removeIdentity(struct identityBST **root, struct identityBST *identity){
 	if(*root == NULL)
 		return;
+
 	struct identityBST* tmp = *root;
+
 	if(*root == identity){
 		*root = tmp-&gt;right;
 		free(tmp);
 		return;
 	}
+
 	while(tmp-&gt;right != identity &amp;&amp; tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
+
 	if(tmp-&gt;right == NULL)
 		return;
+
 	tmp-&gt;right = identity-&gt;right;
 	free(identity);
 }
+
+
 </code></pre>
 <h3> Remove room</h3>
 <pre><code class='cpp'>
@@ -205,6 +256,7 @@ void removeIdentity(struct identityBST **root, struct identityBST *identity){
 void removeRoom(struct roomBST *room){
 	if(rRoot == NULL)
 		return;
+
 	struct roomBST* tmp = rRoot;
 	if(rRoot == room){
 		rRoot = tmp-&gt;right;
@@ -212,10 +264,14 @@ void removeRoom(struct roomBST *room){
 		free(tmp);
 		return;
 	}
+
+
 	while(tmp-&gt;right != room &amp;&amp; tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
+
 	if(tmp-&gt;right == NULL)
 		return;
+
 	tmp-&gt;right = room-&gt;right;
 	free(room-&gt;room);
 	free(room);

@@ -41,6 +41,8 @@
 #include &lt;sys/ioctl.h&gt;
 #include &lt;time.h&gt;
 #include &lt;unistd.h&gt;
+
+
 </code></pre>
 <p>
  Local includes </p>
@@ -48,15 +50,35 @@
 <pre><code class='cpp'>
 
 #include &quot;bst.c&quot;
+
+
 </code></pre>
 <p>
- <span class='todo'>TODO</span>  Actually make the BST structs and functions work like real red-black BSTs. Right now, they are Linked Lists  Add status feature? (may be possible client-side?)  Put specific name colors in external file &quot;colors.txt&quot; or something to prevent recompiling to change name colors  Possible trip code feature? Still undecided on exact implenentation  Still need to add PING/PONG. Spec is easy, implementation isn&#039;t so easy... </p>
+ <span class='todo'>TODO</span> </p>
+
+<p>
+ Actually make the BST structs and functions work like real red-black BSTs. Right now, they are Linked Lists </p>
+
+<p>
+ Add status feature? (may be possible client-side?) </p>
+
+<p>
+ Put specific name colors in external file &quot;colors.txt&quot; or something to prevent recompiling to change name colors </p>
+
+<p>
+ Possible trip code feature? Still undecided on exact implenentation </p>
+
+<p>
+ Still need to add PING/PONG. Spec is easy, implementation isn&#039;t so easy... </p>
 
 <h3> Global variables</h3>
 <pre><code class='cpp'>
 
 const static char* b64Table=&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/&quot;;
+
 unsigned int nameSeed;
+
+
 </code></pre>
 <h3> s(realloc|malloc)</h3>
 <p>
@@ -73,6 +95,7 @@ void* srealloc(void* ptr, size_t size){
 	}
 	return mem;
 }
+
 void* smalloc(size_t size){
 	void *mem = malloc(size+1);
 	if(!mem){
@@ -82,18 +105,26 @@ void* smalloc(size_t size){
 	}
 	return mem;
 }
+
+
 </code></pre>
 <h3> URL String Chop</h3>
 <p>
- Limits a url-encoded string to len characters (Note that this function modifies the string)  Possibly add fix to not deal with URL-encoded strings and handle straight unicode? Username and room name are no longer passed via URL... </p>
+ Limits a url-encoded string to len characters (Note that this function modifies the string) </p>
+
+<p>
+ Possibly add fix to not deal with URL-encoded strings and handle straight unicode? Username and room name are no longer passed via URL... </p>
 
 <pre><code class='cpp'>
 
 void urlStringChop(char** string, unsigned long len){
 	unsigned long i, offset, stringlen = strlen(*string);
+
 	if(stringlen &lt;= len)
 		return;
+
 	for(i=0, offset=0; offset &lt; stringlen &amp;&amp; i &lt;= len;){
+		
 </code></pre>
 <p>
  If this character is a %, we have to see if this chracter is URL-encoded by checking if the next 2 characters are hex digits </p>
@@ -105,6 +136,7 @@ void urlStringChop(char** string, unsigned long len){
 			&amp;&amp; (((*string)[offset+1] &gt; 47 &amp;&amp; ((*string)[offset+1] &lt; 58)) || ((*string)[offset+1] &gt; 64 &amp;&amp; ((*string)[offset+1] &lt; 71)) || ((*string)[offset+1] &gt; 96 &amp;&amp; ((*string)[offset+1] &lt; 104)))
 			&amp;&amp; (((*string)[offset+2] &gt; 47 &amp;&amp; ((*string)[offset+2] &lt; 58)) || ((*string)[offset+2] &gt; 64 &amp;&amp; ((*string)[offset+2] &lt; 71)) || ((*string)[offset+2] &gt; 96 &amp;&amp; ((*string)[offset+2] &lt; 104)))
 		){
+			
 </code></pre>
 <p>
  Now, if this character is URL-encoded and the hex digits are between greater than 0x7F and less than 0xC0, this character is actually part of a unicode character and doesn&#039;t count towards the string total </p>
@@ -113,9 +145,11 @@ void urlStringChop(char** string, unsigned long len){
 
 			if(!((*string)[offset+1] == 56 || (*string)[offset+1] == 57 || (*string)[offset+1] == 65 || (*string)[offset+1] == 66 || (*string)[offset+1] == 97 || (*string)[offset+1] == 98))
 				i++;
+
 			if(i &lt;= len)
 				offset += 2;
 		}else
+		
 </code></pre>
 <p>
  Else the character is just normal ASCII and counts towards the total </p>
@@ -123,22 +157,32 @@ void urlStringChop(char** string, unsigned long len){
 <pre><code class='cpp'>
 
 			i++;
+
 		if(i &lt;= len)
 			offset++;
 	}
+
 	if(i &lt;= len)
 		return;
+
+	
 </code></pre>
 <p>
- Finally, if the string is too long, need to create a new char* of the appropriate length  Possible memory leak here? </p>
+ Finally, if the string is too long, need to create a new char* of the appropriate length </p>
+
+<p>
+ Possible memory leak here? </p>
 
 <pre><code class='cpp'>
 
 	char* tmp = smalloc(offset);
 	strncpy(tmp, *string, offset);
 	tmp[offset] = 0;
+
 	*string = tmp;
 }
+
+
 </code></pre>
 <h3> Send to room</h3>
 <p>
@@ -149,18 +193,26 @@ void urlStringChop(char** string, unsigned long len){
 void sendToRoom(char *msg, char *room){
 	unsigned short len = (unsigned short)strlen(msg) + 16;
 	unsigned char offset;
+
+	
 </code></pre>
 <p>
- Sorry, I&#039;m too lazy to add support messages over 65535 bytes  Should I create a separate encode function? This code is used in a couple of places... </p>
+ Sorry, I&#039;m too lazy to add support messages over 65535 bytes </p>
+
+<p>
+ Should I create a separate encode function? This code is used in a couple of places... </p>
 
 <pre><code class='cpp'>
 
 	if(!len || len &gt; 65535)
 		return;
+
 	char *encoded;
+
 	if(125 &lt; len){
 		offset = 4;
 		encoded = smalloc(len+20);
+
 		encoded[0] = -127;
 		encoded[1] = 126;
 		encoded[2] = (unsigned char)(len/256);
@@ -168,12 +220,16 @@ void sendToRoom(char *msg, char *room){
 	}else{
 		offset = 2;
 		encoded = smalloc(len+18);
+
 		encoded[0] = -127;
 		encoded[1] = len;
 	}
+
 	memcpy(&amp;encoded[offset+16], msg, len-16);
 	len += offset;
+
 	encoded[len] = 0;
+
 	struct roomBST *rNode = searchRoom(room);
 	struct identityBST *each = rNode-&gt;identities;
 	while(each != NULL){
@@ -181,8 +237,11 @@ void sendToRoom(char *msg, char *room){
 		send(each-&gt;identity-&gt;socket-&gt;id, encoded, len, MSG_NOSIGNAL);
 		each = each-&gt;right;
 	}
+
 	free(encoded);
 }
+
+
 </code></pre>
 <h3> Close Socket</h3>
 <p>
@@ -192,14 +251,19 @@ void sendToRoom(char *msg, char *room){
 
 void close_socket(int fd){
 	close(fd);
+
 	struct socketBST *sNode = searchSocket(fd);
+
 	if(sNode == NULL)
 		return;
+
 	struct identityBST *sIdentity = sNode-&gt;identities;
 	while(sIdentity != NULL){
 		struct roomBST *rNode = sIdentity-&gt;identity-&gt;room;
 		struct identityBST *rIdentity = searchIdentity(rNode-&gt;identities, sIdentity-&gt;index);
+
 		removeIdentity(&amp;rNode-&gt;identities, rIdentity);
+
 		if(rNode-&gt;identities == NULL)
 			removeRoom(rNode);
 		else{
@@ -209,14 +273,20 @@ void close_socket(int fd){
 			sendToRoom(bye, sIdentity-&gt;identity-&gt;room-&gt;room);
 			free(bye);
 		}
+
 		free(sIdentity-&gt;identity-&gt;name);
 		free(sIdentity-&gt;identity-&gt;color);
 		free(sIdentity-&gt;identity);
+
 		removeIdentity(&amp;sNode-&gt;identities, sIdentity);
+
 		sIdentity = sNode-&gt;identities;
 	}
+
 	removeSocket(sNode);
 }
+
+
 </code></pre>
 <h3> Get name Colour</h3>
 <pre><code class='cpp'>
@@ -224,23 +294,32 @@ void close_socket(int fd){
 char* getNameColor(char* name){
 	char* color;
 
+
 </code></pre>
 <p>
- Example of a custom name color 	if(!strcmp(name, &quot;example&quot;)){ 		color = smalloc(7); 		strcpy(color, &quot;#FFFFFF&quot;); 		return color; 	} </p>
+ Example of a custom name color </p>
+
+<p>
+	if(!strcmp(name, &quot;example&quot;)){ 		color = smalloc(7); 		strcpy(color, &quot;#FFFFFF&quot;); 		return color; 	} </p>
 
 <pre><code class='cpp'>
 
 	unsigned int seed = nameSeed;
 	unsigned short i, len = strlen(name);
+
 	if(len &gt; 32)
 		for(i=0; i&lt;len; i++)
 			seed += ((unsigned char)name[i] + i) * 65536;
 	else
 		for(i=32; i&gt;0; i--)
 			seed += (unsigned char)name[i%(len+1)] * ((i+1) * (i+2));
+
 	srand(seed);
+
 	color = smalloc(7);
 	sprintf(color, &quot;#%X&quot;, rand()%191 + 64 + (rand()%191 + 64) * 0x100 + (rand()%191 + 64) * 0x10000);
+
+	
 </code></pre>
 <p>
  Don&#039;t forget to reseed rand()! This prevents an attacker from setting knowable room/guest names </p>
@@ -249,9 +328,13 @@ char* getNameColor(char* name){
 
 	struct timespec timespecSeed;
 	clock_gettime(CLOCK_REALTIME, &amp;timespecSeed);
+
 	srand(((unsigned int)clock() + (unsigned int)timespecSeed.tv_nsec) * 256 * rand());
+
 	return color;
 }
+
+
 </code></pre>
 <h3> Random Suffix</h3>
 <p>
@@ -261,11 +344,15 @@ char* getNameColor(char* name){
 
 void randomSuffix(char** rand, unsigned long len){
 	unsigned long c, prelen = strlen(*rand);
+
 	*rand = srealloc(*rand, len+prelen);
 	for(c = 0; c &lt; len; c++)
 		(*rand)[prelen+c] = b64Table[random() % 62];
+
 	(*rand)[prelen+len] = 0;
 }
+
+
 </code></pre>
 <h3> Main function</h3>
 <pre><code class='cpp'>
@@ -275,14 +362,20 @@ int main(int argc, char *argv[]){
 		printf(&quot;usage is ./socket &lt;port #&gt;\n&quot;);
 		exit(1);
 	}
+
 	int e, lsocket;
 	unsigned char val = 1;
 	struct sockaddr_in *in_addr, serv_addr;
 	struct epoll_event event, *events;
 	socklen_t in_len = sizeof in_addr;
+
+	
 </code></pre>
 <p>
- Bind the port  Don&#039;t know much about sockets. Perhaps I can do something differently here to make handling the sockets easier? </p>
+ Bind the port </p>
+
+<p>
+ Don&#039;t know much about sockets. Perhaps I can do something differently here to make handling the sockets easier? </p>
 
 <pre><code class='cpp'>
 
@@ -291,10 +384,12 @@ int main(int argc, char *argv[]){
 		printf(&quot;Socket creation failed&quot;);
 		return 1;
 	}
+
 	if(setsockopt(lsocket, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), &amp;val, sizeof(int)) &lt; 0){
 		printf(&quot;Socket creation failed&quot;);
 		return 1;
 	}
+
 	memset((char *)&amp;serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(atoi(argv[1]));
@@ -303,7 +398,10 @@ int main(int argc, char *argv[]){
 		printf(&quot;Error binding the socket&quot;);
 		return 1;
 	}
+
 	listen(lsocket, 8);
+
+	
 </code></pre>
 <p>
  Set up epoll </p>
@@ -317,6 +415,7 @@ int main(int argc, char *argv[]){
 		free(events);
 		return 1;
 	}
+
 	event.data.fd = lsocket;
 	event.events = EPOLLIN | EPOLLET;
 	if(epoll_ctl(e, EPOLL_CTL_ADD, lsocket, &amp;event) == -1){
@@ -324,6 +423,8 @@ int main(int argc, char *argv[]){
 		free(events);
 		return 1;
 	}
+
+	
 </code></pre>
 <p>
  Perhaps make this global and set time on every socket action? Timestamp is used in a few places... </p>
@@ -332,8 +433,11 @@ int main(int argc, char *argv[]){
 
 	struct timespec timespecSeed;
 	clock_gettime(CLOCK_REALTIME, &amp;timespecSeed);
+
 	nameSeed = ((unsigned int)clock() + (unsigned int)timespecSeed.tv_nsec) * 256 * rand();
 	srand(nameSeed);
+
+	
 </code></pre>
 <p>
  Now drops to nobody privileges! Should make own user in perfect world, but I can deal with that later... </p>
@@ -345,11 +449,14 @@ int main(int argc, char *argv[]){
 		free(events);
 		exit(0);
 	}
+
 	if(setuid(65534) != 0){
 		printf(&quot;Unable to drop user privileges!&quot;);
 		free(events);
 		exit(0);
 	}
+
+	
 </code></pre>
 <p>
  This should be the only output that prints on a successful process start </p>
@@ -357,7 +464,9 @@ int main(int argc, char *argv[]){
 <pre><code class='cpp'>
 
 	printf(&quot;Starting main loop...\n&quot;);
+
 	while(epoll_wait(e, events, 1, -1) &gt; 0){
+		
 </code></pre>
 <p>
  Sometimes something happens and we need to close the socket </p>
@@ -366,15 +475,22 @@ int main(int argc, char *argv[]){
 
 		if((events[0].events &amp; EPOLLERR) || (events[0].events &amp; EPOLLHUP) || (!(events[0].events &amp; EPOLLIN)))
 			close_socket(events[0].data.fd);
+
 		else if(lsocket == events[0].data.fd){
+			
 </code></pre>
 <p>
- Else, if the active socket is the broadcast socket, then we have a new connection  I can handle this so much better, but I don&#039;t have the time to fix this right now. Sorry :( </p>
+ Else, if the active socket is the broadcast socket, then we have a new connection </p>
+
+<p>
+ I can handle this so much better, but I don&#039;t have the time to fix this right now. Sorry :( </p>
 
 <pre><code class='cpp'>
 
 			char buffer[1024]={0}, tmp[256]={0}, *nl;
 			short len = 1;
+
+			
 </code></pre>
 <p>
  Accepting the new socket </p>
@@ -383,13 +499,17 @@ int main(int argc, char *argv[]){
 
 			event.data.fd = accept(lsocket, (struct sockaddr *) &amp;in_addr, &amp;in_len);
 			fcntl(event.data.fd, F_SETFL, fcntl(event.data.fd, F_GETFL, 0) | O_NONBLOCK);
+
 			if(event.data.fd == -1)
 				break;
+
 			if(epoll_ctl(e, EPOLL_CTL_ADD, event.data.fd, &amp;event) == -1){
 				close(event.data.fd);
 				free(events);
 				return 1;
 			}
+
+			
 </code></pre>
 <p>
  Now we have to read the headers. Did this incorrectly in the past, and will handle this properly some day... </p>
@@ -397,15 +517,22 @@ int main(int argc, char *argv[]){
 <pre><code class='cpp'>
 
 			len = recv(event.data.fd, buffer, 1023, MSG_WAITALL);
+
 			if(len == 1023 || len &lt; 1){
 				while(recv(event.data.fd, buffer, 1023, MSG_WAITALL) &gt; 0){}
+
 				close(event.data.fd);
 				continue;
 			}
+
 			nl = buffer;
+			
 </code></pre>
 <p>
- If you have questions about this part, refer to the spec: https://tools.ietf.org/html/rfc6455  And find Sec-WebSocket-Key. We have to do a case-insensitive search because sometimes the header isn&#039;t capitalized properly... </p>
+ If you have questions about this part, refer to the spec: https://tools.ietf.org/html/rfc6455 </p>
+
+<p>
+ And find Sec-WebSocket-Key. We have to do a case-insensitive search because sometimes the header isn&#039;t capitalized properly... </p>
 
 <pre><code class='cpp'>
 
@@ -417,10 +544,13 @@ int main(int argc, char *argv[]){
 				}
 				nl += 2;
 			}
+
 			if(!&amp;tmp[0]){
 				close(event.data.fd);
 				continue;
 			}
+
+			
 </code></pre>
 <p>
  Now we hash the tmp buffer with SHA1 </p>
@@ -429,6 +559,8 @@ int main(int argc, char *argv[]){
 
 			SHA1((const unsigned char*)tmp, 60, (unsigned char*)tmp);
 			strcpy(buffer, &quot;HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: &quot;);
+
+			
 </code></pre>
 <p>
  And base64_encode it </p>
@@ -439,34 +571,44 @@ int main(int argc, char *argv[]){
 			buffer[98] = b64Table[((0x3&amp;(unsigned char)tmp[0])&lt;&lt;4) + ((unsigned char)tmp[1]&gt;&gt;4)];
 			buffer[99] = b64Table[((0x0f&amp;(unsigned char)tmp[1])&lt;&lt;2) + ((unsigned char)tmp[2]&gt;&gt;6)];
 			buffer[100] = b64Table[0x3f&amp;(unsigned char)tmp[2]];
+
 			buffer[101] = b64Table[(unsigned char)tmp[3] &gt;&gt; 2];
 			buffer[102] = b64Table[((0x3&amp;(unsigned char)tmp[3])&lt;&lt;4) + ((unsigned char)tmp[4]&gt;&gt;4)];
 			buffer[103] = b64Table[((0x0f&amp;(unsigned char)tmp[4])&lt;&lt;2) + ((unsigned char)tmp[5]&gt;&gt;6)];
 			buffer[104] = b64Table[0x3f&amp;(unsigned char)tmp[5]];
+
 			buffer[105] = b64Table[(unsigned char)tmp[6] &gt;&gt; 2];
 			buffer[106] = b64Table[((0x3&amp;(unsigned char)tmp[6])&lt;&lt;4) + ((unsigned char)tmp[7]&gt;&gt;4)];
 			buffer[107] = b64Table[((0x0f&amp;(unsigned char)tmp[7])&lt;&lt;2) + ((unsigned char)tmp[8]&gt;&gt;6)];
 			buffer[108] = b64Table[0x3f&amp;(unsigned char)tmp[8]];
+
 			buffer[109] = b64Table[(unsigned char)tmp[9] &gt;&gt; 2];
 			buffer[110] = b64Table[((0x3&amp;(unsigned char)tmp[9])&lt;&lt;4) + ((unsigned char)tmp[10]&gt;&gt;4)];
 			buffer[111] = b64Table[((0x0f&amp;(unsigned char)tmp[10])&lt;&lt;2) + ((unsigned char)tmp[11]&gt;&gt;6)];
 			buffer[112] = b64Table[0x3f&amp;(unsigned char)tmp[11]];
+
 			buffer[113] = b64Table[(unsigned char)tmp[12] &gt;&gt; 2];
 			buffer[114] = b64Table[((0x3&amp;(unsigned char)tmp[12])&lt;&lt;4) + ((unsigned char)tmp[13]&gt;&gt;4)];
 			buffer[115] = b64Table[((0x0f&amp;(unsigned char)tmp[13])&lt;&lt;2) + ((unsigned char)tmp[14]&gt;&gt;6)];
 			buffer[116] = b64Table[0x3f&amp;(unsigned char)tmp[14]];
+
 			buffer[117] = b64Table[(unsigned char)tmp[15] &gt;&gt; 2];
 			buffer[118] = b64Table[((0x3&amp;(unsigned char)tmp[15])&lt;&lt;4) + ((unsigned char)tmp[16]&gt;&gt;4)];
 			buffer[119] = b64Table[((0x0f&amp;(unsigned char)tmp[16])&lt;&lt;2) + ((unsigned char)tmp[17]&gt;&gt;6)];
 			buffer[120] = b64Table[0x3f&amp;(unsigned char)tmp[17]];
+
 			buffer[121] = b64Table[(unsigned char)tmp[18] &gt;&gt; 2];
 			buffer[122] = b64Table[((0x3&amp;(unsigned char)tmp[18])&lt;&lt;4) + ((unsigned char)tmp[19]&gt;&gt;4)];
 			buffer[123] = b64Table[((0x0f&amp;(unsigned char)tmp[19])&lt;&lt;2)];
+
 			strcpy(&amp;buffer[124], &quot;=\r\n\r\n&quot;);
+
 			if(strlen(buffer) == 0 || send(event.data.fd, buffer, 129, MSG_NOSIGNAL) &lt; 1){
 				close_socket(event.data.fd);
 				continue;
 			}
+
+			
 </code></pre>
 <p>
  Insert socket &quot;BST&quot; node </p>
@@ -479,11 +621,16 @@ int main(int argc, char *argv[]){
 			socketNode-&gt;identities = NULL;
 			socketNode-&gt;left = NULL;
 			socketNode-&gt;right = NULL;
+
 			insertSocket(socketNode);
 		}else{
+			
 </code></pre>
 <p>
- Else, it&#039;s just a regular message  Could probably still implement this better... </p>
+ Else, it&#039;s just a regular message </p>
+
+<p>
+ Could probably still implement this better... </p>
 
 <pre><code class='cpp'>
 
@@ -491,6 +638,8 @@ int main(int argc, char *argv[]){
 			long recvlen = 1;
 			int tmplen;
 			unsigned short i, len;
+
+			
 </code></pre>
 <p>
  For example, this probably shouldn&#039;t be an infinite loop </p>
@@ -498,6 +647,7 @@ int main(int argc, char *argv[]){
 <pre><code class='cpp'>
 
 			for(;;){
+				
 </code></pre>
 <p>
  And there&#039;s probably a better way to handle my memory than this... </p>
@@ -508,17 +658,26 @@ int main(int argc, char *argv[]){
 					free(msg);
 					msg = NULL;
 				}
+
+				
 </code></pre>
 <p>
- Refer to the spec for this part!  We wait until the first 2 bytes are available or an error is thrown </p>
+ Refer to the spec for this part! </p>
+
+<p>
+ We wait until the first 2 bytes are available or an error is thrown </p>
 
 <pre><code class='cpp'>
 
 				while(!ioctl(events[0].data.fd, FIONREAD, &amp;tmplen) &amp;&amp; tmplen == 1){}
 				if(tmplen &lt; 2)
 					break;
+
 				recv(events[0].data.fd, buffer, 2, 0);
+
 				len = ((unsigned char)buffer[1]) % 128;
+
+				
 </code></pre>
 <p>
    FIN &amp; op = 1          Mask set            len &gt; 0 </p>
@@ -530,7 +689,10 @@ int main(int argc, char *argv[]){
 					close_socket(events[0].data.fd);
 					break;
 				}
+
 				len = ((unsigned char)buffer[1]) % 128;
+
+				
 </code></pre>
 <p>
  Again, no lengths over 65535. I&#039;m lazy :( </p>
@@ -539,7 +701,9 @@ int main(int argc, char *argv[]){
 
 				if(len == 127)
 					break;
+
 				if(len == 126){
+					
 </code></pre>
 <p>
  If the length is set to 126, the next 2 bytes of the packet header contain the 16-bit payload length </p>
@@ -549,10 +713,14 @@ int main(int argc, char *argv[]){
 					while(!ioctl(events[0].data.fd, FIONREAD, &amp;tmplen) &amp;&amp; tmplen &lt; 6){}
 					if(tmplen &lt; 6)
 						break;
+
 					recv(events[0].data.fd, buffer, 6, 0);
+
 					len = (((unsigned char)buffer[0]) &lt;&lt; 8) + (unsigned char)buffer[1];
+
 					memcpy(mask, &amp;buffer[2], 4);
 				}else{
+					
 </code></pre>
 <p>
  Else, if the length is set to 125 or less, this is the actual payload length </p>
@@ -562,8 +730,11 @@ int main(int argc, char *argv[]){
 					while(!ioctl(events[0].data.fd, FIONREAD, &amp;tmplen) &amp;&amp; tmplen &lt; 4){}
 					if(tmplen &lt; 4)
 						break;
+
 					recv(events[0].data.fd, mask, 4, 0);
 				}
+
+				
 </code></pre>
 <p>
  Now to read the actual payload (chat message) </p>
@@ -572,21 +743,29 @@ int main(int argc, char *argv[]){
 
 				recvlen = 0;
 				msg = smalloc(len);
+
 				while(recvlen &lt; len){
 					unsigned short readlen = 4095;
 					if(len - recvlen &lt; readlen)
 						readlen = len - recvlen;
+
 					tmplen = recv(events[0].data.fd, buffer, readlen, 0);
+
 					if(tmplen &lt; 0 &amp;&amp; errno != EWOULDBLOCK &amp;&amp; errno != EAGAIN)
 						break;
+
 					if(tmplen &gt; 0){
 						memcpy(msg + recvlen, buffer, tmplen);
 						recvlen += tmplen;
 					}
 				}
+
 				for(i=0; i &lt; len; i++)
 					msg[i] ^= mask[i%4];
+
 				msg[len] = 0;
+
+				
 </code></pre>
 <p>
  Sometimes the Tor Browser Bundle will randomly send &quot;(null)&quot;? I just skip these so that the browser doesn&#039;t spam the chat </p>
@@ -595,6 +774,8 @@ int main(int argc, char *argv[]){
 
 				if(!strcmp(&quot;(null)&quot;, msg) &amp;&amp; len == 6)
 					continue;
+
+				
 </code></pre>
 <p>
  A user wants to join a room. Values are delimited with a space and blank values will be replaced with random values </p>
@@ -607,8 +788,11 @@ int main(int argc, char *argv[]){
 					name = strstr(room, &quot; &quot;);
 					if(name == NULL)
 						continue;
+
 					name[0] = 0;
 					name++;
+
+					
 </code></pre>
 <p>
  Calling smalloc and copying the room/name out of the buffer seems like an inelegant implementation to me... Possibly rework somehow? </p>
@@ -625,6 +809,7 @@ int main(int argc, char *argv[]){
 						room = tmp;
 					}
 					urlStringChop(&amp;room, 40);
+
 					if(!strlen(name)){
 						name = smalloc(5);
 						strcpy(name, &quot;Guest&quot;);
@@ -635,20 +820,25 @@ int main(int argc, char *argv[]){
 						name = tmp;
 					}
 					urlStringChop(&amp;name, 22);
+
 					struct socketBST *sNode = searchSocket(events[0].data.fd);
 					if(sNode == NULL)
 						continue;
+
 					struct roomBST *rNode = searchRoom(room);
 					if(rNode == NULL){
 						rNode = malloc(sizeof(struct roomBST));
 						rNode-&gt;room = smalloc(strlen(room));
 						strcpy(rNode-&gt;room, room);
 						rNode-&gt;rb = 0;
+
 						rNode-&gt;identities = NULL;
 						rNode-&gt;left = NULL;
 						rNode-&gt;right = NULL;
+
 						insertRoom(rNode);
 					}else{
+						
 </code></pre>
 <p>
  Make sure the name isn&#039;t already being used in that room... </p>
@@ -656,58 +846,76 @@ int main(int argc, char *argv[]){
 <pre><code class='cpp'>
 
 						struct identityBST* tmp = rNode-&gt;identities;
+
 						while(tmp != NULL){
 							if(strcmp(tmp-&gt;identity-&gt;name, name) == 0 &amp;&amp; strlen(name) == strlen(tmp-&gt;identity-&gt;name)){
 								char *encoded = smalloc(59);
 								encoded[0] = -127;
 								encoded[1] = 57;
 								memcpy(&amp;encoded[2], &quot;{\&quot;event\&quot;:\&quot;error\&quot;,\&quot;msg\&quot;:\&quot;This username is already taken!\&quot;}&quot;, 57);
+
 								send(events[0].data.fd, encoded, 59, MSG_NOSIGNAL);
+
 								free(encoded);
 								break;
 							}
+
 							tmp = tmp-&gt;right;
 						}
+
 						if(tmp != NULL){
 							free(room);
 							free(name);
 							continue;
 						}
 					}
+
 					char *b = smalloc(4);
 					strcpy(b, &quot;id-&quot;);
 					randomSuffix(&amp;b, 13);
+
 					struct identityBST *rIdentity = malloc(sizeof(struct identityBST)), *sIdentity = malloc(sizeof(struct identityBST));
 					strcpy(sIdentity-&gt;index, b);
 					sIdentity-&gt;rb = 0;
 					sIdentity-&gt;identity = NULL;
 					sIdentity-&gt;left = NULL;
 					sIdentity-&gt;right = NULL;
+
 					sIdentity-&gt;identity = malloc(sizeof(struct identityNode));
 					sIdentity-&gt;identity-&gt;name = smalloc(strlen(name));
 					strcpy(sIdentity-&gt;identity-&gt;name, name);
 					sIdentity-&gt;identity-&gt;color = getNameColor(name);
 					sIdentity-&gt;identity-&gt;socket = sNode;
 					sIdentity-&gt;identity-&gt;room = rNode;
+
 					*rIdentity = *sIdentity;
+
 					free(b);
 					b = smalloc(strlen(name) + strlen(sIdentity-&gt;identity-&gt;color) + 35);
 					sprintf(b, &quot;{\&quot;user\&quot;:\&quot;%s\&quot;,\&quot;color\&quot;:\&quot;%s\&quot;,\&quot;event\&quot;:\&quot;hi\&quot;}&quot;, name, sIdentity-&gt;identity-&gt;color);
 					sendToRoom(b, room);
 					free(b);
+
 					insertIdentity(&amp;(rNode-&gt;identities), rIdentity);
 					insertIdentity(&amp;(sNode-&gt;identities), sIdentity);
+
 					b = smalloc(63 + strlen(room) + strlen(name));
 					sprintf(b, &quot;%s{\&quot;event\&quot;:\&quot;joined\&quot;,\&quot;room\&quot;:\&quot;%s\&quot;,\&quot;user\&quot;:\&quot;%s\&quot;,\&quot;users\&quot;:{&quot;, sIdentity-&gt;index, room, name);
+
 					free(room);
 					free(name);
+
 					struct identityBST *users = rNode-&gt;identities;
 					while(users != NULL){
 						b = srealloc(b, strlen(b) + strlen(users-&gt;identity-&gt;name) + strlen(users-&gt;identity-&gt;color) + 7);
 						sprintf(b + strlen(b), &quot;\&quot;%s\&quot;:\&quot;%s\&quot;,&quot;, users-&gt;identity-&gt;name, users-&gt;identity-&gt;color);
+
 						users = users-&gt;right;
 					}
+
 					strcpy(&amp;b[strlen(b)-1], &quot;}}&quot;);
+
+					
 </code></pre>
 <p>
  Again, encoding a packet, but sending it only to this single socket </p>
@@ -716,9 +924,11 @@ int main(int argc, char *argv[]){
 
 					char *encoded;
 					unsigned short len = (unsigned short)strlen(b);
+
 					if(125 &lt; len){
 						if(65536 &lt; len)
 							continue;
+
 						encoded = smalloc(len+4);
 						encoded[0] = -127;
 						encoded[1] = 126;
@@ -733,12 +943,18 @@ int main(int argc, char *argv[]){
 						memcpy(&amp;encoded[2], b, len);
 						len += 2;
 					}
+
 					encoded[len] = 0;
+
 					send(events[0].data.fd, encoded, len, MSG_NOSIGNAL);
+
 					free(b);
 					free(encoded);
+
 					continue;
 				}
+
+				
 </code></pre>
 <p>
  Handle invite </p>
@@ -747,34 +963,45 @@ int main(int argc, char *argv[]){
 
 				if(!strncmp(&quot;invite: &quot;, msg, 8)){
 					char *iId, *iName, *iRoom;
+
 					iId = msg + 8;
 					iName = strstr(iId, &quot; &quot;);
 					if(iName == NULL)
 						continue;
+
 					iName[0] = 0;
 					iName++;
+
 					iRoom = strstr(iName, &quot; &quot;);
 					if(iRoom == NULL)
 						continue;
+
 					iRoom[0] = 0;
 					iRoom++;
+
 					struct roomBST *rNode = searchRoom(iRoom);
 					if(rNode == NULL)
 						continue;
+
 					struct identityBST *rIdentity = rNode-&gt;identities;
 					while(rIdentity != NULL){
 						if(!strcmp(rIdentity-&gt;identity-&gt;name, iName) &amp;&amp; strlen(iName) == strlen(rIdentity-&gt;identity-&gt;name))
 							break;
+
 						rIdentity = rIdentity-&gt;right;
 					}
+
 					if(rIdentity == NULL)
 						continue;
+
 					struct socketBST *thisSocket = searchSocket(events[0].data.fd);
 					struct identityBST *thisIdentity = searchIdentity(thisSocket-&gt;identities, iId);
+
 					char *encoded;
 					encoded = smalloc(strlen(thisIdentity-&gt;identity-&gt;room-&gt;room) + 32);
 					encoded[0] = -127;
 					encoded[1] = strlen(thisIdentity-&gt;identity-&gt;room-&gt;room)+30;
+					
 </code></pre>
 <p>
  Invites don&#039;t really care about the exact identity invited, only the user... </p>
@@ -783,9 +1010,13 @@ int main(int argc, char *argv[]){
 
 					sprintf(&amp;encoded[2], &quot;{\&quot;invite\&quot;:\&quot;%s\&quot;,\&quot;event\&quot;:\&quot;invite\&quot;}&quot;, thisIdentity-&gt;identity-&gt;room-&gt;room);
 					send(rIdentity-&gt;identity-&gt;socket-&gt;id, encoded, strlen(thisIdentity-&gt;identity-&gt;room-&gt;room)+32, MSG_NOSIGNAL);
+
 					free(encoded);
+
 					continue;
 				}
+
+				
 </code></pre>
 <p>
  If a user wants to leave a room </p>
@@ -795,13 +1026,18 @@ int main(int argc, char *argv[]){
 				if(!strncmp(&quot;leave: &quot;, msg, 7)){
 					if(msg + 7 == NULL)
 						continue;
+
 					struct socketBST* sNode = searchSocket(events[0].data.fd);
 					struct identityBST* sIdentity = searchIdentity(sNode-&gt;identities, msg + 7);
+
 					if(sIdentity == NULL)
 						continue;
+
 					struct roomBST* rNode = sIdentity-&gt;identity-&gt;room;
 					struct identityBST* rIdentity = searchIdentity(rNode-&gt;identities, msg + 7);
+
 					removeIdentity(&amp;rNode-&gt;identities, rIdentity);
+
 					if(rNode-&gt;identities == NULL)
 						removeRoom(rNode);
 					else{
@@ -809,14 +1045,20 @@ int main(int argc, char *argv[]){
 						bye = smalloc(25 + strlen(sIdentity-&gt;identity-&gt;name));
 						sprintf(bye, &quot;{\&quot;event\&quot;:\&quot;bye\&quot;,\&quot;user\&quot;:\&quot;%s\&quot;}&quot;, sIdentity-&gt;identity-&gt;name);
 						sendToRoom(bye, sIdentity-&gt;identity-&gt;room-&gt;room);
+
 						free(bye);
 					}
+
 					free(sIdentity-&gt;identity-&gt;color);
 					free(sIdentity-&gt;identity-&gt;name);
 					free(sIdentity-&gt;identity);
+
 					removeIdentity(&amp;sNode-&gt;identities, sIdentity);
+
 					continue;
 				}
+
+				
 </code></pre>
 <p>
  Otherwise, if the payload starts with &quot;chat: &quot;, it&#039;s a normal message. Else, we disregard the packet </p>
@@ -825,31 +1067,44 @@ int main(int argc, char *argv[]){
 
 				if(strncmp(&quot;chat: &quot;, msg, 6))
 					continue;
+
 				struct socketBST *socketNode = searchSocket(events[0].data.fd);
 				if(socketNode == NULL)
 					continue;
+
 				char *id = msg + 6;
 				char *tmp = strstr(id, &quot; &quot;);
+
 				if(tmp == NULL)
 					continue;
+
 				tmp[0] = 0;
+
 				unsigned char offset = 7 + strlen(id);
+
 				tmp = smalloc(len - offset);
 				memcpy(tmp, &amp;msg[offset], len - offset);
 				tmp[len - offset] = 0;
+
 				if(!strlen(tmp))
 					continue;
+
 				struct identityBST *identityNode = searchIdentity(socketNode-&gt;identities, id);
 				if(identityNode == NULL)
 					continue;
+
 				urlStringChop(&amp;tmp, 350);
+
 				char *b;
 				b = smalloc(strlen(tmp) + strlen(identityNode-&gt;identity-&gt;name) + 36);
 				sprintf(b, &quot;{\&quot;user\&quot;:\&quot;%s\&quot;,\&quot;event\&quot;:\&quot;chat\&quot;,\&quot;data\&quot;:\&quot;%s\&quot;}&quot;, identityNode-&gt;identity-&gt;name, tmp);
 				sendToRoom(b, identityNode-&gt;identity-&gt;room-&gt;room);
+
 				free(b);
 				free(tmp);
 			}
+
+			
 </code></pre>
 <p>
  <span class='fixme'>FIXME</span> Messy messy messy... </p>
@@ -858,9 +1113,12 @@ int main(int argc, char *argv[]){
 
 			if(msg != NULL)
 				free(msg);
+
 		}
 	}
+
 	free(events);
+
 	return 0;
 }
 </code></pre>
