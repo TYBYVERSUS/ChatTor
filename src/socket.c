@@ -1,3 +1,14 @@
+/*
+title: socket
+colour: white
+emphasis: #6b6bb8
+highlight: atelier-lakeside-dark
+background: black
+---
+# Socket
+*/
+
+// Library includes
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -10,19 +21,23 @@
 #include <time.h>
 #include <unistd.h>
 
+// Local includes
 #include "bst.c"
 
-// Todo
+// TODO
 // Actually make the BST structs and functions work like real red-black BSTs. Right now, they are Linked Lists
 // Add status feature? (may be possible client-side?)
 // Put specific name colors in external file "colors.txt" or something to prevent recompiling to change name colors
 // Possible trip code feature? Still undecided on exact implenentation
 // Still need to add PING/PONG. Spec is easy, implementation isn't so easy...
 
+// ### Global variables
 const static char* b64Table="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 unsigned int nameSeed;
-// s(realloc|malloc) are for strings. They both add +1 to the size of memory allocated
+
+// ### s(realloc|malloc)
+// For strings. They both add +1 to the size of memory allocated
 void* srealloc(void* ptr, size_t size){
 	void *mem = realloc(ptr, size+1);
 	if(!ptr || !mem){
@@ -43,6 +58,7 @@ void* smalloc(size_t size){
 	return mem;
 }
 
+// ### URL String Chop
 // Limits a url-encoded string to len characters (Note that this function modifies the string)
 // Possibly add fix to not deal with URL-encoded strings and handle straight unicode? Username and room name are no longer passed via URL...
 void urlStringChop(char** string, unsigned long len){
@@ -84,6 +100,7 @@ void urlStringChop(char** string, unsigned long len){
 	*string = tmp;
 }
 
+// ### Send to room
 // Sends the message to everyone in the room
 void sendToRoom(char *msg, char *room){
 	unsigned short len = (unsigned short)strlen(msg) + 16;
@@ -128,6 +145,7 @@ void sendToRoom(char *msg, char *room){
 	free(encoded);
 }
 
+// ### Close Socket
 // This is the function to call when a connection has been closed
 void close_socket(int fd){
 	close(fd);
@@ -166,6 +184,7 @@ void close_socket(int fd){
 	removeSocket(sNode);
 }
 
+// ### Get name Colour
 char* getNameColor(char* name){
 	char* color;
 
@@ -203,6 +222,7 @@ char* getNameColor(char* name){
 	return color;
 }
 
+// ### Random Suffix
 // A function for adding a random suffix to a string (b64 charset without + and /)
 void randomSuffix(char** rand, unsigned long len){
 	unsigned long c, prelen = strlen(*rand);
@@ -214,6 +234,7 @@ void randomSuffix(char** rand, unsigned long len){
 	(*rand)[prelen+len] = 0;
 }
 
+// ### Main function
 int main(int argc, char *argv[]){
 	if(argc != 2){
 		printf("usage is ./socket <port #>\n");
