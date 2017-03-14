@@ -787,7 +787,7 @@ int main(int argc, char *argv[]){
 				free(tmp);
 			}
 
-			// FIXME Messy messy messy...
+			// Messy messy messy...
 			if(msg != NULL)
 				free(msg);
 
