@@ -340,8 +340,8 @@ function establishConnection(){
 			break;
 
 			case 'invite':
-				if(!browserFocused && document.title.charAt(0) !== '*')
-					document.title = document.title.replace(/\*/, '')+'*';
+				if(!browserFocused)
+					document.title = document.title.replace(/\+/, '')+'+';
 
 				document.getElementById('room').value = decodeURIComponent(data.invite);
 				document.getElementById('tabs').lastElementChild.classList.add('invited');
@@ -358,7 +358,7 @@ function establishConnection(){
 			break;
 
 			case 'bye':
-				if(!browserFocused && document.title.charAt(0) !== '*')
+				if(!browserFocused)
 					document.title = document.title.replace(/\*/, '')+'*';
 
 				var roomElem = document.querySelector('#rooms > .'+id);
