@@ -9,12 +9,19 @@ var browserFocused = true;
 var closeIntervalID = null;
 var ids = new Object();
 var socket = null;
+var title = document.title;
 var unreadMessages = 0;
 
+
+if(window.location.protocol === 'https:')
+	var protocol = 'wss';
+else
+	var protocol = 'ws';
+
 if((new Audio).canPlayType('audio/ogg; codecs=vorbis') !== 'no')
-	var audio = new Audio(window.location.origin+'/notification.ogg');
+	var audio = new Audio(window.location.href+'notification.ogg');
 else if((new Audio).canPlayType('audio/mpeg') !== 'no')
-	var audio = new Audio(window.location.origin+'/notification.mp3');
+	var audio = new Audio(window.location.href+'notification.mp3');
 
 if(audio)
 	audio.volume = 0.5;
@@ -83,10 +90,10 @@ function establishConnection(){
 	if(socket !== null)
 		socket.close();
 
-	socket = new WebSocket('ws://'+window.location.hostname+'/ws/chat/');
+	socket = new WebSocket(protocol+'://'+window.location.hostname+'/ws/chat/');
 
 	socket.onopen = function(){
-		document.title = 'ChatTor';
+		document.title = title;
 
 		document.getElementById('rooms').lastElementChild.lastElementChild.removeAttribute('disabled');
 
@@ -138,11 +145,11 @@ function establishConnection(){
 				postEventEvents(id);
 
 				if(!browserFocused)
-					document.title = 'ChatTor ('+(++unreadMessages)+')';
+					document.title = document.title.replace(/ \([0-9]*\)/, '')+' ('+(++unreadMessages)+')';
 			break;
 
 			case 'joined':
-				document.title = 'ChatTor';
+				document.title = title;
 
 				ids[id] = {
 					name: data.user,
@@ -293,13 +300,19 @@ function establishConnection(){
 
 					var style = document.createElement('style');
 					style.classList.add(buser);
-					style.innerHTML = '.'+buser+'>span,.userlist>li+li+li~li.'+buser+',.messages .'+buser+'{color:'+data.users[user]+';}';
+					style.innerHTML = '.'+buser+'>span,.userlist>li+li+li~li.'+buser+',.messages .'+buser+'{';
+
+					if(data.users[user][0] === "#")
+						style.innerHTML += 'color:'+data.users[user]+';}';
 
 					document.head.appendChild(style);
 				}
 			break;
 
 			case 'hi':
+				if(!browserFocused)
+					document.title = document.title.replace(/\*/, '')+'*';
+
 				var buser = b64encode(data.user);
 				var roomElem = document.querySelector('#rooms > .'+id);
 
@@ -308,7 +321,10 @@ function establishConnection(){
 				if(document.querySelector('style.'+buser) === null){
 					var style = document.createElement('style');
 					style.classList.add(buser);
-					style.innerHTML = '.'+buser+'>span,.userlist>li+li+li~li.'+buser+',.messages .'+buser+'{color:'+data.color+';}';
+					style.innerHTML = '.'+buser+'>span,.userlist>li+li+li~li.'+buser+',.messages .'+buser+'{';
+					
+					if(data.color[0] === "#")
+						style.innerHTML += 'color:'+data.color+';}';
 
 					document.head.appendChild(style);
 				}
@@ -324,6 +340,9 @@ function establishConnection(){
 			break;
 
 			case 'invite':
+				if(!browserFocused && document.title.charAt(0) !== '*')
+					document.title = document.title.replace(/\*/, '')+'*';
+
 				document.getElementById('room').value = decodeURIComponent(data.invite);
 				document.getElementById('tabs').lastElementChild.classList.add('invited');
 
@@ -339,6 +358,9 @@ function establishConnection(){
 			break;
 
 			case 'bye':
+				if(!browserFocused && document.title.charAt(0) !== '*')
+					document.title = document.title.replace(/\*/, '')+'*';
+
 				var roomElem = document.querySelector('#rooms > .'+id);
 
 				roomElem.getElementsByClassName('userlist')[0].removeChild(roomElem.getElementsByClassName('userlist')[0].getElementsByClassName(b64encode(data.user))[0]);
@@ -354,7 +376,7 @@ function establishConnection(){
 			break;
 
 			case 'error':
-				document.title = 'ChatTor';
+				document.title = title;
 				document.getElementById('room').parentNode.lastElementChild.disabled = '';
 
 				alert(data.msg);
@@ -401,8 +423,8 @@ window.onfocus = function(){
 	browserFocused = true;
 	unreadMessages = 0;
 
-	if(document.title !== "ChatTor" && socket.readyState === 1){
-		document.title = 'ChatTor';
+	if(document.title !== title && socket.readyState === 1){
+		document.title = title;
 	}
 }
 
