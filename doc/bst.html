@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv='Content-type' content='text/html; charset=utf-8' />	<title>bst.c</title>
+<meta http-equiv='Content-type' content='text/html; charset=utf-8' />	<title>bst</title>
 	<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/atelier-lakeside-dark.min.css'>
 	<script src='http://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js'></script>
 	<script type='text/javascript' async src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML'></script>
@@ -24,10 +24,19 @@
 </style>
 
 <body>
-<h1> bst</h1>
+<h1> BST</h1>
+<h2> Structs</h2>
+<p>
+ Forward declarations </p>
+
 <pre><code class='cpp'>
 
 struct identityNode;
+
+
+</code></pre>
+<h3> Identity BST</h3>
+<pre><code class='cpp'>
 
 struct identityBST{
 	char index[17];
@@ -36,6 +45,11 @@ struct identityBST{
 	struct identityBST *left, *right;
 };
 
+
+</code></pre>
+<h3> Socket BST</h3>
+<pre><code class='cpp'>
+
 struct socketBST{
 	int id;
 	unsigned char rb;
@@ -43,12 +57,22 @@ struct socketBST{
 	struct socketBST *left, *right;
 };
 
+
+</code></pre>
+<h3> Room BST</h3>
+<pre><code class='cpp'>
+
 struct roomBST{
 	char* room;
 	unsigned char rb;
 	struct identityBST *identities;
 	struct roomBST *left, *right;
 };
+
+
+</code></pre>
+<h3> Identity node</h3>
+<pre><code class='cpp'>
 
 struct identityNode{
 	char *name, *color;
@@ -58,10 +82,18 @@ struct identityNode{
 
 
 
+</code></pre>
+<h3> Globobal variables</h3>
+<pre><code class='cpp'>
+
 struct socketBST *sRoot = NULL;
 struct roomBST *rRoot = NULL;
 
 
+
+</code></pre>
+<h3> Insert Socket</h3>
+<pre><code class='cpp'>
 
 void insertSocket(struct socketBST *socket){
 	if(sRoot == NULL){
@@ -72,9 +104,14 @@ void insertSocket(struct socketBST *socket){
 	struct socketBST *tmp = sRoot;
 	while(tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
-	
+
 	tmp-&gt;right = socket;
 }
+
+
+</code></pre>
+<h3> Insert identity</h3>
+<pre><code class='cpp'>
 
 void insertIdentity(struct identityBST **root, struct identityBST *identity){
 	if(*root == NULL){
@@ -85,9 +122,14 @@ void insertIdentity(struct identityBST **root, struct identityBST *identity){
 	struct identityBST *tmp = *root;
 	while(tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
-	
+
 	tmp-&gt;right = identity;
 }
+
+
+</code></pre>
+<h3> Insert Room</h3>
+<pre><code class='cpp'>
 
 void insertRoom(struct roomBST *room){
 	if(rRoot == NULL){
@@ -98,11 +140,14 @@ void insertRoom(struct roomBST *room){
 	struct roomBST *tmp = rRoot;
 	while(tmp-&gt;right != NULL)
 		tmp = tmp-&gt;right;
-	
+
 	tmp-&gt;right = room;
 }
 
 
+</code></pre>
+<h3> Search Socket</h3>
+<pre><code class='cpp'>
 
 struct socketBST* searchSocket(int id){
 	struct socketBST *tmp = sRoot;
@@ -116,6 +161,11 @@ struct socketBST* searchSocket(int id){
 	return NULL;
 }
 
+
+</code></pre>
+<h3> Search identity</h3>
+<pre><code class='cpp'>
+
 struct identityBST* searchIdentity(struct identityBST *root, char* id){
 	struct identityBST *tmp = root;
 	while(tmp != NULL){
@@ -127,6 +177,11 @@ struct identityBST* searchIdentity(struct identityBST *root, char* id){
 
 	return NULL;
 }
+
+
+</code></pre>
+<h3> Search Room</h3>
+<pre><code class='cpp'>
 
 struct roomBST* searchRoom(char* room){
 	struct roomBST *tmp = rRoot;
@@ -141,6 +196,9 @@ struct roomBST* searchRoom(char* room){
 }
 
 
+</code></pre>
+<h3> Remove Socket</h3>
+<pre><code class='cpp'>
 
 void removeSocket(struct socketBST *socket){
 	if(sRoot == NULL)
@@ -163,6 +221,11 @@ void removeSocket(struct socketBST *socket){
 	free(socket);
 }
 
+
+</code></pre>
+<h3> Remove identity</h3>
+<pre><code class='cpp'>
+
 void removeIdentity(struct identityBST **root, struct identityBST *identity){
 	if(*root == NULL)
 		return;
@@ -184,6 +247,11 @@ void removeIdentity(struct identityBST **root, struct identityBST *identity){
 	tmp-&gt;right = identity-&gt;right;
 	free(identity);
 }
+
+
+</code></pre>
+<h3> Remove room</h3>
+<pre><code class='cpp'>
 
 void removeRoom(struct roomBST *room){
 	if(rRoot == NULL)

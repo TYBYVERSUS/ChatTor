@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv='Content-type' content='text/html; charset=utf-8' />	<title>socket.c</title>
+<meta http-equiv='Content-type' content='text/html; charset=utf-8' />	<title>socket</title>
 	<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/atelier-lakeside-dark.min.css'>
 	<script src='http://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js'></script>
 	<script type='text/javascript' async src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML'></script>
@@ -25,6 +25,9 @@
 
 <body>
 <h1> Socket</h1>
+<p>
+ Library includes </p>
+
 <pre><code class='cpp'>
 
 #include &lt;errno.h&gt;
@@ -35,8 +38,16 @@
 #include &lt;stdlib.h&gt;
 #include &lt;string.h&gt;
 #include &lt;sys/epoll.h&gt;
+#include &lt;sys/ioctl.h&gt;
 #include &lt;time.h&gt;
 #include &lt;unistd.h&gt;
+
+
+</code></pre>
+<p>
+ Local includes </p>
+
+<pre><code class='cpp'>
 
 #include &quot;bst.c&quot;
 
@@ -55,29 +66,30 @@
  Put specific name colors in external file &quot;colors.txt&quot; or something to prevent recompiling to change name colors </p>
 
 <p>
- May be a small memory leak somewhere. My RAM usage keeps rising, although so does the number of users... </p>
-
-<p>
  Possible trip code feature? Still undecided on exact implenentation </p>
 
 <p>
  Still need to add PING/PONG. Spec is easy, implementation isn&#039;t so easy... </p>
 
+<h3> Global variables</h3>
 <pre><code class='cpp'>
 
 const static char* b64Table=&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/&quot;;
 
 unsigned int nameSeed;
 
+
 </code></pre>
+<h3> s(realloc|malloc)</h3>
 <p>
- s(realloc|malloc) are for strings. They both add +1 to the size of memory allocated </p>
+ For strings. They both add +1 to the size of memory allocated </p>
 
 <pre><code class='cpp'>
 
 void* srealloc(void* ptr, size_t size){
 	void *mem = realloc(ptr, size+1);
 	if(!ptr || !mem){
+		free(ptr);
 		printf(&quot;realloc() error!&quot;);
 		exit(1);
 	}
@@ -87,6 +99,7 @@ void* srealloc(void* ptr, size_t size){
 void* smalloc(size_t size){
 	void *mem = malloc(size+1);
 	if(!mem){
+		free(mem);
 		printf(&quot;malloc() failed!&quot;);
 		exit(1);
 	}
@@ -95,6 +108,7 @@ void* smalloc(size_t size){
 
 
 </code></pre>
+<h3> URL String Chop</h3>
 <p>
  Limits a url-encoded string to len characters (Note that this function modifies the string) </p>
 
@@ -131,7 +145,7 @@ void urlStringChop(char** string, unsigned long len){
 
 			if(!((*string)[offset+1] == 56 || (*string)[offset+1] == 57 || (*string)[offset+1] == 65 || (*string)[offset+1] == 66 || (*string)[offset+1] == 97 || (*string)[offset+1] == 98))
 				i++;
-			
+
 			if(i &lt;= len)
 				offset += 2;
 		}else
@@ -156,10 +170,6 @@ void urlStringChop(char** string, unsigned long len){
 <p>
  Finally, if the string is too long, need to create a new char* of the appropriate length </p>
 
-<pre><code class='cpp'>
-
-	
-</code></pre>
 <p>
  Possible memory leak here? </p>
 
@@ -174,6 +184,7 @@ void urlStringChop(char** string, unsigned long len){
 
 
 </code></pre>
+<h3> Send to room</h3>
 <p>
  Sends the message to everyone in the room </p>
 
@@ -188,10 +199,6 @@ void sendToRoom(char *msg, char *room){
 <p>
  Sorry, I&#039;m too lazy to add support messages over 65535 bytes </p>
 
-<pre><code class='cpp'>
-
-	
-</code></pre>
 <p>
  Should I create a separate encode function? This code is used in a couple of places... </p>
 
@@ -230,10 +237,13 @@ void sendToRoom(char *msg, char *room){
 		send(each-&gt;identity-&gt;socket-&gt;id, encoded, len, MSG_NOSIGNAL);
 		each = each-&gt;right;
 	}
+
+	free(encoded);
 }
 
 
 </code></pre>
+<h3> Close Socket</h3>
 <p>
  This is the function to call when a connection has been closed </p>
 
@@ -252,13 +262,6 @@ void close_socket(int fd){
 		struct roomBST *rNode = sIdentity-&gt;identity-&gt;room;
 		struct identityBST *rIdentity = searchIdentity(rNode-&gt;identities, sIdentity-&gt;index);
 
-		
-</code></pre>
-<p>
- Possibly not freeing everything properly here? Possible memory leak? </p>
-
-<pre><code class='cpp'>
-
 		removeIdentity(&amp;rNode-&gt;identities, rIdentity);
 
 		if(rNode-&gt;identities == NULL)
@@ -271,15 +274,22 @@ void close_socket(int fd){
 			free(bye);
 		}
 
-		removeIdentity(&amp;sNode-&gt;identities, sIdentity);
 		free(sIdentity-&gt;identity-&gt;name);
 		free(sIdentity-&gt;identity-&gt;color);
 		free(sIdentity-&gt;identity);
+
+		removeIdentity(&amp;sNode-&gt;identities, sIdentity);
+
 		sIdentity = sNode-&gt;identities;
 	}
 
 	removeSocket(sNode);
 }
+
+
+</code></pre>
+<h3> Get name Colour</h3>
+<pre><code class='cpp'>
 
 char* getNameColor(char* name){
 	char* color;
@@ -294,7 +304,6 @@ char* getNameColor(char* name){
 
 <pre><code class='cpp'>
 
-	
 	unsigned int seed = nameSeed;
 	unsigned short i, len = strlen(name);
 
@@ -327,6 +336,7 @@ char* getNameColor(char* name){
 
 
 </code></pre>
+<h3> Random Suffix</h3>
 <p>
  A function for adding a random suffix to a string (b64 charset without + and /) </p>
 
@@ -342,13 +352,19 @@ void randomSuffix(char** rand, unsigned long len){
 	(*rand)[prelen+len] = 0;
 }
 
+
+</code></pre>
+<h3> Main function</h3>
+<pre><code class='cpp'>
+
 int main(int argc, char *argv[]){
 	if(argc != 2){
 		printf(&quot;usage is ./socket &lt;port #&gt;\n&quot;);
 		exit(1);
 	}
 
-	unsigned char e, lsocket, val = 1;
+	int e, lsocket;
+	unsigned char val = 1;
 	struct sockaddr_in *in_addr, serv_addr;
 	struct epoll_event event, *events;
 	socklen_t in_len = sizeof in_addr;
@@ -358,10 +374,6 @@ int main(int argc, char *argv[]){
 <p>
  Bind the port </p>
 
-<pre><code class='cpp'>
-
-	
-</code></pre>
 <p>
  Don&#039;t know much about sockets. Perhaps I can do something differently here to make handling the sockets easier? </p>
 
@@ -400,6 +412,7 @@ int main(int argc, char *argv[]){
 	events = malloc(sizeof event);
 	if(e == -1){
 		printf(&quot;Epoll failed to create?&quot;);
+		free(events);
 		return 1;
 	}
 
@@ -407,6 +420,7 @@ int main(int argc, char *argv[]){
 	event.events = EPOLLIN | EPOLLET;
 	if(epoll_ctl(e, EPOLL_CTL_ADD, lsocket, &amp;event) == -1){
 		printf(&quot;epoll_ctl() failed for broadcast socket&quot;);
+		free(events);
 		return 1;
 	}
 
@@ -432,11 +446,13 @@ int main(int argc, char *argv[]){
 
 	if(setgid(65534) != 0){
 		printf(&quot;Unable to drop group privileges!&quot;);
+		free(events);
 		exit(0);
 	}
 
 	if(setuid(65534) != 0){
 		printf(&quot;Unable to drop user privileges!&quot;);
+		free(events);
 		exit(0);
 	}
 
@@ -466,16 +482,12 @@ int main(int argc, char *argv[]){
 <p>
  Else, if the active socket is the broadcast socket, then we have a new connection </p>
 
-<pre><code class='cpp'>
-
-			
-</code></pre>
 <p>
  I can handle this so much better, but I don&#039;t have the time to fix this right now. Sorry :( </p>
 
 <pre><code class='cpp'>
 
-			char buffer[512]={0}, tmp[256]={0}, *nl;
+			char buffer[1024]={0}, tmp[256]={0}, *nl;
 			short len = 1;
 
 			
@@ -493,6 +505,7 @@ int main(int argc, char *argv[]){
 
 			if(epoll_ctl(e, EPOLL_CTL_ADD, event.data.fd, &amp;event) == -1){
 				close(event.data.fd);
+				free(events);
 				return 1;
 			}
 
@@ -503,10 +516,10 @@ int main(int argc, char *argv[]){
 
 <pre><code class='cpp'>
 
-			len = recv(event.data.fd, buffer, 511, MSG_WAITALL);
+			len = recv(event.data.fd, buffer, 1023, MSG_WAITALL);
 
-			if(len == 511 || len &lt; 1){
-				while(recv(event.data.fd, buffer, 511, MSG_WAITALL) &gt; 0){}
+			if(len == 1023 || len &lt; 1){
+				while(recv(event.data.fd, buffer, 1023, MSG_WAITALL) &gt; 0){}
 
 				close(event.data.fd);
 				continue;
@@ -518,10 +531,6 @@ int main(int argc, char *argv[]){
 <p>
  If you have questions about this part, refer to the spec: https://tools.ietf.org/html/rfc6455 </p>
 
-<pre><code class='cpp'>
-
-			
-</code></pre>
 <p>
  And find Sec-WebSocket-Key. We have to do a case-insensitive search because sometimes the header isn&#039;t capitalized properly... </p>
 
@@ -550,7 +559,7 @@ int main(int argc, char *argv[]){
 
 			SHA1((const unsigned char*)tmp, 60, (unsigned char*)tmp);
 			strcpy(buffer, &quot;HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: &quot;);
-			
+
 			
 </code></pre>
 <p>
@@ -620,18 +629,14 @@ int main(int argc, char *argv[]){
 <p>
  Else, it&#039;s just a regular message </p>
 
-<pre><code class='cpp'>
-
-			
-</code></pre>
 <p>
- Could probably implement this better. I just re-wrote most of this code and haven&#039;t been able to comb back through it and improve it yet </p>
+ Could probably still implement this better... </p>
 
 <pre><code class='cpp'>
 
 			char buffer[4096]={0}, mask[4]={0}, *msg = NULL;
 			long recvlen = 1;
-			short tmplen;
+			int tmplen;
 			unsigned short i, len;
 
 			
@@ -657,52 +662,35 @@ int main(int argc, char *argv[]){
 				
 </code></pre>
 <p>
- Refer to the spec for this part! We read the first 2 bytes of the packet header... </p>
+ Refer to the spec for this part! </p>
+
+<p>
+ We wait until the first 2 bytes are available or an error is thrown </p>
 
 <pre><code class='cpp'>
 
-				recvlen = recv(events[0].data.fd, buffer, 2, 0);
-
-				if(recvlen &lt; 1)
+				while(!ioctl(events[0].data.fd, FIONREAD, &amp;tmplen) &amp;&amp; tmplen == 1){}
+				if(tmplen &lt; 2)
 					break;
 
-				msg = malloc(2);
-				memcpy(msg, buffer, recvlen);
+				recv(events[0].data.fd, buffer, 2, 0);
 
-				while(recvlen &lt; 2){
-					tmplen = recv(events[0].data.fd, buffer, 1, 0);
-
-					if(tmplen &lt; 0 &amp;&amp; errno != EWOULDBLOCK &amp;&amp; errno != EAGAIN)
-						break;
-
-					if(tmplen == 1){
-						msg[1] = buffer[0];
-						recvlen++;
-					}
-				}
-
-				if(recvlen != 2)
-					break;
-
-				len = ((unsigned char)msg[1]) % 128;
+				len = ((unsigned char)buffer[1]) % 128;
 
 				
 </code></pre>
 <p>
-  FIN &amp; op = 1       Mask set         len &gt; 0 </p>
+   FIN &amp; op = 1          Mask set            len &gt; 0 </p>
 
 <pre><code class='cpp'>
 
-				if(msg[0] != -127 || msg[1] &gt; -1 || msg[1] == -128){
+				if(buffer[0] != -127 || buffer[1] &gt; -1 || buffer[1] == -128){
 					while(recv(events[0].data.fd, buffer, 4096, 0) &gt; 0){}
 					close_socket(events[0].data.fd);
 					break;
 				}
 
-				len = ((unsigned char)msg[1]) % 128;
-
-				free(msg);
-				msg = NULL;
+				len = ((unsigned char)buffer[1]) % 128;
 
 				
 </code></pre>
@@ -722,33 +710,15 @@ int main(int argc, char *argv[]){
 
 <pre><code class='cpp'>
 
-					recvlen = recv(events[0].data.fd, buffer, 6, 0);
-					msg = malloc(6);
-
-					if(recvlen &gt; 0)
-						memcpy(msg, buffer, recvlen);
-					else
-						recvlen = 0;
-
-					while(recvlen &lt; 6){
-						unsigned char readlen = 6 - recvlen;
-						tmplen = recv(events[0].data.fd, buffer, readlen, 0);
-
-						if(tmplen &lt; 0 &amp;&amp; errno != EWOULDBLOCK &amp;&amp; errno != EAGAIN)
-							break;
-
-						if(tmplen &gt; 0){
-							memcpy(msg + recvlen, buffer, tmplen);
-							recvlen += tmplen;
-						}
-					}
-
-					if(recvlen != 6)
+					while(!ioctl(events[0].data.fd, FIONREAD, &amp;tmplen) &amp;&amp; tmplen &lt; 6){}
+					if(tmplen &lt; 6)
 						break;
 
-					len = (((unsigned char)msg[0]) &lt;&lt; 8) + (unsigned char)msg[1];
+					recv(events[0].data.fd, buffer, 6, 0);
 
-					memcpy(mask, &amp;msg[2], 4);
+					len = (((unsigned char)buffer[0]) &lt;&lt; 8) + (unsigned char)buffer[1];
+
+					memcpy(mask, &amp;buffer[2], 4);
 				}else{
 					
 </code></pre>
@@ -757,34 +727,12 @@ int main(int argc, char *argv[]){
 
 <pre><code class='cpp'>
 
-					recvlen = recv(events[0].data.fd, buffer, 4, 0);
-					msg = malloc(4);
-
-					if(recvlen &gt; 0)
-						memcpy(msg, buffer, recvlen);
-					else
-						recvlen = 0;
-
-					while(recvlen &lt; 4){
-						unsigned char readlen = 4 - recvlen;
-						tmplen = recv(events[0].data.fd, buffer, readlen, 0);
-
-						if(tmplen &lt; 0 &amp;&amp; errno != EWOULDBLOCK &amp;&amp; errno != EAGAIN)
-							break;
-
-						if(tmplen &gt; 0){
-							memcpy(msg + recvlen, buffer, tmplen);
-							recvlen += tmplen;
-						}
-					}
-
-					if(recvlen != 4)
+					while(!ioctl(events[0].data.fd, FIONREAD, &amp;tmplen) &amp;&amp; tmplen &lt; 4){}
+					if(tmplen &lt; 4)
 						break;
 
-					memcpy(mask, msg, 4);
+					recv(events[0].data.fd, mask, 4, 0);
 				}
-
-				free(msg);
 
 				
 </code></pre>
@@ -844,10 +792,21 @@ int main(int argc, char *argv[]){
 					name[0] = 0;
 					name++;
 
+					
+</code></pre>
+<p>
+ Calling smalloc and copying the room/name out of the buffer seems like an inelegant implementation to me... Possibly rework somehow? </p>
+
+<pre><code class='cpp'>
+
 					if(!strlen(room)){
 						room = smalloc(4);
 						strcpy(room, &quot;Room&quot;);
 						randomSuffix(&amp;room, 36);
+					}else{
+						char *tmp = smalloc(strlen(room));
+						strcpy(tmp, room);
+						room = tmp;
 					}
 					urlStringChop(&amp;room, 40);
 
@@ -855,6 +814,10 @@ int main(int argc, char *argv[]){
 						name = smalloc(5);
 						strcpy(name, &quot;Guest&quot;);
 						randomSuffix(&amp;name, 17);
+					}else{
+						char *tmp = smalloc(strlen(name));
+						strcpy(tmp, name);
+						name = tmp;
 					}
 					urlStringChop(&amp;name, 22);
 
@@ -883,7 +846,6 @@ int main(int argc, char *argv[]){
 <pre><code class='cpp'>
 
 						struct identityBST* tmp = rNode-&gt;identities;
-						unsigned char taken = 0;
 
 						while(tmp != NULL){
 							if(strcmp(tmp-&gt;identity-&gt;name, name) == 0 &amp;&amp; strlen(name) == strlen(tmp-&gt;identity-&gt;name)){
@@ -895,15 +857,17 @@ int main(int argc, char *argv[]){
 								send(events[0].data.fd, encoded, 59, MSG_NOSIGNAL);
 
 								free(encoded);
-								taken = 1;
 								break;
 							}
 
 							tmp = tmp-&gt;right;
 						}
 
-						if(taken)
+						if(tmp != NULL){
+							free(room);
+							free(name);
 							continue;
+						}
 					}
 
 					char *b = smalloc(4);
@@ -937,6 +901,9 @@ int main(int argc, char *argv[]){
 
 					b = smalloc(63 + strlen(room) + strlen(name));
 					sprintf(b, &quot;%s{\&quot;event\&quot;:\&quot;joined\&quot;,\&quot;room\&quot;:\&quot;%s\&quot;,\&quot;user\&quot;:\&quot;%s\&quot;,\&quot;users\&quot;:{&quot;, sIdentity-&gt;index, room, name);
+
+					free(room);
+					free(name);
 
 					struct identityBST *users = rNode-&gt;identities;
 					while(users != NULL){
@@ -983,6 +950,7 @@ int main(int argc, char *argv[]){
 
 					free(b);
 					free(encoded);
+
 					continue;
 				}
 
@@ -1042,7 +1010,9 @@ int main(int argc, char *argv[]){
 
 					sprintf(&amp;encoded[2], &quot;{\&quot;invite\&quot;:\&quot;%s\&quot;,\&quot;event\&quot;:\&quot;invite\&quot;}&quot;, thisIdentity-&gt;identity-&gt;room-&gt;room);
 					send(rIdentity-&gt;identity-&gt;socket-&gt;id, encoded, strlen(thisIdentity-&gt;identity-&gt;room-&gt;room)+32, MSG_NOSIGNAL);
+
 					free(encoded);
+
 					continue;
 				}
 
@@ -1067,7 +1037,7 @@ int main(int argc, char *argv[]){
 					struct identityBST* rIdentity = searchIdentity(rNode-&gt;identities, msg + 7);
 
 					removeIdentity(&amp;rNode-&gt;identities, rIdentity);
-					
+
 					if(rNode-&gt;identities == NULL)
 						removeRoom(rNode);
 					else{
@@ -1075,12 +1045,16 @@ int main(int argc, char *argv[]){
 						bye = smalloc(25 + strlen(sIdentity-&gt;identity-&gt;name));
 						sprintf(bye, &quot;{\&quot;event\&quot;:\&quot;bye\&quot;,\&quot;user\&quot;:\&quot;%s\&quot;}&quot;, sIdentity-&gt;identity-&gt;name);
 						sendToRoom(bye, sIdentity-&gt;identity-&gt;room-&gt;room);
+
 						free(bye);
 					}
 
-					removeIdentity(&amp;sNode-&gt;identities, sIdentity);
+					free(sIdentity-&gt;identity-&gt;color);
 					free(sIdentity-&gt;identity-&gt;name);
 					free(sIdentity-&gt;identity);
+
+					removeIdentity(&amp;sNode-&gt;identities, sIdentity);
+
 					continue;
 				}
 
@@ -1100,10 +1074,10 @@ int main(int argc, char *argv[]){
 
 				char *id = msg + 6;
 				char *tmp = strstr(id, &quot; &quot;);
-				
+
 				if(tmp == NULL)
 					continue;
-				
+
 				tmp[0] = 0;
 
 				unsigned char offset = 7 + strlen(id);
@@ -1125,6 +1099,7 @@ int main(int argc, char *argv[]){
 				b = smalloc(strlen(tmp) + strlen(identityNode-&gt;identity-&gt;name) + 36);
 				sprintf(b, &quot;{\&quot;user\&quot;:\&quot;%s\&quot;,\&quot;event\&quot;:\&quot;chat\&quot;,\&quot;data\&quot;:\&quot;%s\&quot;}&quot;, identityNode-&gt;identity-&gt;name, tmp);
 				sendToRoom(b, identityNode-&gt;identity-&gt;room-&gt;room);
+
 				free(b);
 				free(tmp);
 			}
@@ -1141,6 +1116,8 @@ int main(int argc, char *argv[]){
 
 		}
 	}
+
+	free(events);
 
 	return 0;
 }
