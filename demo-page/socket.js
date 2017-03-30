@@ -19,9 +19,9 @@ else
 	var protocol = 'ws';
 
 if((new Audio).canPlayType('audio/ogg; codecs=vorbis') !== 'no')
-	var audio = new Audio(window.location.href+'notification.ogg');
+	var audio = new Audio(window.location.pathname+'notification.ogg');
 else if((new Audio).canPlayType('audio/mpeg') !== 'no')
-	var audio = new Audio(window.location.href+'notification.mp3');
+	var audio = new Audio(window.location.pathname+'notification.mp3');
 
 if(audio)
 	audio.volume = 0.5;
