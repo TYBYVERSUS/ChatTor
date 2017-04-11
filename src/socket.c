@@ -699,12 +699,31 @@ int main(int argc, char *argv[]){
 					struct identityBST *thisIdentity = searchIdentity(thisSocket->identities, iId);
 
 					char *encoded;
-					encoded = smalloc(strlen(thisIdentity->identity->room->room) + 32);
-					encoded[0] = -127;
-					encoded[1] = strlen(thisIdentity->identity->room->room)+30;
+
+					// Long room names will cause the user to get kicked! Should probably put this snippet in a function since it's used in a few places
+					unsigned char offset;
+					unsigned short messageLength = 30 + strlen(thisIdentity->identity->room->room);
+
+					if(125 < messageLength){
+							offset = 4;
+							encoded = smalloc(messageLength + 4); 
+
+							encoded[0] = -127;
+							encoded[1] = 126;
+							encoded[2] = (unsigned char)(messageLength/256);
+							encoded[3] = messageLength % 256;
+					}else{
+							offset = 2;
+							encoded = smalloc(messageLength + 2); 
+
+							encoded[0] = -127;
+							encoded[1] = messageLength;
+					}
+
 					// Invites don't really care about the exact identity invited, only the user...
-					sprintf(&encoded[2], "{\"invite\":\"%s\",\"event\":\"invite\"}", thisIdentity->identity->room->room);
-					send(rIdentity->identity->socket->id, encoded, strlen(thisIdentity->identity->room->room)+32, MSG_NOSIGNAL);
+					sprintf(&encoded[offset], "{\"invite\":\"%s\",\"event\":\"invite\"}", thisIdentity->identity->room->room);
+					send(rIdentity->identity->socket->id, encoded, messageLength + offset, MSG_NOSIGNAL);
+
 
 					free(encoded);
 
