@@ -1,3 +1,5 @@
+### This is now legacy. Please use a newer branch
+
 # How to Install
 
 
@@ -38,13 +40,3 @@ Obviously, replace the .onion with your clearnet or onion domain, replace the po
 ### 3) Start the web socket server
 
 Finally, to run your newly-compiled web socket server, type `./bin/web_socket_server 8080`. If you'd like to run the process via SSH or a local terminal and be able to exit the session without killing the process, instead use `nohup ./bin/web_socket_server 8080 &`. There are currently no service files for systemd nor any other init system, but, again this will likely change as the install process improves.
-
-
-
-# Conclusion
-
-Thanks for showing an interest in my source. I'm new to the open-source community, so please be patient with me and, if you have the time, help me to improve my code and my packaging in general.
-
-
-Thanks,
-  ChatTor
