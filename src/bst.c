@@ -1,56 +1,87 @@
-/*
-title: bst
-colour: white
-emphasis: #6b6bb8
-highlight: atelier-lakeside-dark
-background: black
----
-# BST
-
-## Structs
-*/
-
-// Forward declarations
 struct identityNode;
 
-// ### Identity BST 
-struct identityBST{
-	char index[17];
+struct roomIdentityBST{
+	char *name;
 	unsigned char rb;
+	struct roomIdentityBST *left, *right;
+
+	unsigned int name_length;
 	struct identityNode *identity;
-	struct identityBST *left, *right;
+
+	struct roomIdentityBST *next;
 };
 
-// ### Socket BST
+struct socketIdentityBST{
+	char *name;
+	unsigned char rb;
+	struct socketIdentityBST *left, *right;
+
+	unsigned int name_length;
+	struct identityNode *identity;
+};
+
 struct socketBST{
-	int id;
+	char *name;
 	unsigned char rb;
-	struct identityBST *identities;
 	struct socketBST *left, *right;
+
+	int fd;
+	struct socketIdentityBST *identities;
+	pthread_mutex_t identities_mutex;
 };
 
-// ### Room BST
 struct roomBST{
-	char* room;
+	char *name;
 	unsigned char rb;
-	struct identityBST *identities;
 	struct roomBST *left, *right;
+
+	struct roomIdentityBST *first, *identities, *last;
+	pthread_mutex_t identities_mutex;
 };
 
-// ### Identity node
 struct identityNode{
-	char *name, *color;
-	struct socketBST *socket;
-	struct roomBST *room;
+	char *color, *name, trip[21];
+	struct socketBST *socketBST;
+	struct roomBST *roomBST;
+};
+
+// This is used for typecasting void* for BST operations... Things MUST BE in this order
+struct redBlackBSTBase{
+	char *name;
+	unsigned char rb;
+	struct redBlackBSTBase *left, *right;
 };
 
 
-// ### Globobal variables
-struct socketBST *sRoot = NULL;
-struct roomBST *rRoot = NULL;
+struct socketBST *sockets_root = NULL;
+struct roomBST *rooms_root = NULL;
 
 
-// ### Insert Socket
+void insertNode(void **root, void *node, pthread_mutex_t *mutex){
+	if(mutex != NULL)
+		pthread_mutex_lock(mutex);
+
+	((struct redBlackBSTBase*)node)->right = *root;
+	*root = node;
+
+	if(mutex != NULL)
+		pthread_mutex_unlock(mutex);
+}
+
+void* searchNode(void *root, char *name, uint64_t length){
+	struct redBlackBSTBase *tmp = (struct redBlackBSTBase*)root;
+
+	while(tmp != NULL){
+		if(!memcmp(tmp->name, name, length))
+			return tmp;
+
+		tmp = tmp->right;
+	}
+
+	return NULL;
+}
+
+/*
 void insertSocket(struct socketBST *socket){
 	if(sRoot == NULL){
 		sRoot = socket;
@@ -64,7 +95,6 @@ void insertSocket(struct socketBST *socket){
 	tmp->right = socket;
 }
 
-// ### Insert identity
 void insertIdentity(struct identityBST **root, struct identityBST *identity){
 	if(*root == NULL){
 		*root = identity;
@@ -78,7 +108,6 @@ void insertIdentity(struct identityBST **root, struct identityBST *identity){
 	tmp->right = identity;
 }
 
-// ### Insert Room
 void insertRoom(struct roomBST *room){
 	if(rRoot == NULL){
 		rRoot = room;
@@ -91,8 +120,8 @@ void insertRoom(struct roomBST *room){
 
 	tmp->right = room;
 }
-
-// ### Search Socket
+*/
+/*
 struct socketBST* searchSocket(int id){
 	struct socketBST *tmp = sRoot;
 	while(tmp != NULL){
@@ -105,7 +134,6 @@ struct socketBST* searchSocket(int id){
 	return NULL;
 }
 
-// ### Search identity
 struct identityBST* searchIdentity(struct identityBST *root, char* id){
 	struct identityBST *tmp = root;
 	while(tmp != NULL){
@@ -118,7 +146,6 @@ struct identityBST* searchIdentity(struct identityBST *root, char* id){
 	return NULL;
 }
 
-// ### Search Room
 struct roomBST* searchRoom(char* room){
 	struct roomBST *tmp = rRoot;
 	while(tmp != NULL){
@@ -131,7 +158,8 @@ struct roomBST* searchRoom(char* room){
 	return NULL;
 }
 
-// ### Remove Socket
+
+
 void removeSocket(struct socketBST *socket){
 	if(sRoot == NULL)
 		return;
@@ -153,7 +181,6 @@ void removeSocket(struct socketBST *socket){
 	free(socket);
 }
 
-// ### Remove identity
 void removeIdentity(struct identityBST **root, struct identityBST *identity){
 	if(*root == NULL)
 		return;
@@ -176,7 +203,6 @@ void removeIdentity(struct identityBST **root, struct identityBST *identity){
 	free(identity);
 }
 
-// ### Remove room
 void removeRoom(struct roomBST *room){
 	if(rRoot == NULL)
 		return;
@@ -199,4 +225,4 @@ void removeRoom(struct roomBST *room){
 	tmp->right = room->right;
 	free(room->room);
 	free(room);
-}
+}*/

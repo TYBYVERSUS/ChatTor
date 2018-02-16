@@ -1,0 +1,12 @@
+Just a few things to keep in mind:
+
+ - I will remain the ultimate artiber of what makes it into this repo. I will probably touch your code, and I may not be gentle
+ - Loosely comment what you're doing (I will add more comments next time I work on this), and be a little more specific if you're doing something weird
+ - Use NULL bytes ('\0', char 0) to delimit strings, not just terminate them (Strings with a known length don't need a NULL terminator, but adding one isn't a big deal to me)
+ - Don't create tons of unecessary variables. If you do this, I will molest your code, and I will not be gentle
+ - Don't create functions because you want to break up long sections of code; only create functions to avoid duplicating code, to do recursion, etc
+ - It is ok to break this code up into more files since I will no longer be the only one working on this, but please keep things sane
+ - Keep the code performant, and don't use more resources than you need (don't use a long to count to 5, do use unsigned ints where appropriate, etc)
+ - Try to keep things agnostic of OS/compiler. I've been trying to do this myself, but may have used something non-standard without realizing it
+  * The only known exception I've made to this is using SIGIO. SIGIO is not POSIX (yet?), but SIGPOLL is marked as obsolescent and doesn't seem to work? I don't know
+ - I didn't make a gitignore to ignore the contents of bin/. You might want to do this

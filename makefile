@@ -1,11 +1,10 @@
 CC = gcc
-CFLAGS = -O2 -march=native -fstack-protector-all
+CFLAGS = -O2 -march=native -D_XOPEN_SOURCE=700 -xc -std=c11 -fstack-protector-all -Wall -Wextra -pedantic -g
 
-all: socket
+all: new
 
-socket:
-	mkdir -p bin
-	$(CC) $(CFLAGS) -Wall -xc -o bin/web_socket_server src/socket.c -lcrypto
+new:
+	$(CC) $(CFLAGS) -o bin/new_web_socket_server src/main.c -lcrypto -pthread
 
 clean:
-	rm bin/*
+	$(RM) bin/*
