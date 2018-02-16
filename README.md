@@ -2,7 +2,6 @@
 
 # How to Install
 
-
 ### 1) Compile the web socket server
 
 This source can be compiled using make, which most of you should already be familiar with. There is no configure script (yet), so installing is as easy as `make socket`. There is currently no `make install`, but that will hopefully change in the future.

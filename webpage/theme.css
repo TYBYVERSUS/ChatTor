@@ -1,6 +1,7 @@
 body{
 	background: #000;
 	color: #FFF;
+	font-family: Arial;
 	font-size: 14px;
 }
 
@@ -36,11 +37,6 @@ label:hover{
 	color: #5F5;
 }
 
-img[src="/logo.svg"]{
-	height: 55px;
-	margin-right: 2px;
-}
-
 input[type="text"]{
 	background: #000;
 	border: 1px solid #FFF;
@@ -59,11 +55,9 @@ input[type="text"]:not([disabled]):focus{
 	border-color: #5F5;
 }
 
-input[type="submit"]{
-	display: none;
-}
-
-.hide{
+.hide,
+#rooms > *:not(.selected),
+#new_tab_notification:empty{
 	display: none;
 }
 
@@ -75,18 +69,15 @@ input[type="submit"]{
 }
 
 #banner > a:first-child{
-	font: normal 50px "Verdana";
+	font-size: 50px;
 	margin-right: 15px;
 	text-decoration: none;	
 }
 
 #tabs{
-	padding-top: 20px;
-}
-
-#tabs:not(:empty){
 	border-bottom: 2px solid #FFF;
-	padding-bottom: 2px;
+	margin-bottom: 5px;
+	padding: 20px 0 2px;
 }
 
 #tabs > span{
@@ -105,7 +96,9 @@ input[type="submit"]{
 	color: #FFF;
 }
 
-#tabs > span.new_message{
+#tabs > span.new_message,
+#tabs > span > span,
+#rooms .greentext{
 	color: #5F5;
 }
 
@@ -114,38 +107,26 @@ input[type="submit"]{
 	color: #FF0;
 }
 
-#tabs > span > span{
-	color: #5F5;
-}
-
-#tabs > span:not(.selected) > span{
-	display: none;
-}
-
 #rooms{
 	padding-bottom: 30px;
 }
 
-#rooms > div:not(.selected){
-	display: none;
+#rooms > div.d_fault{
+	margin-top: 5px;
 }
 
-#rooms > div:last-child{
-	margin-top: 13px;
-	overflow-y: auto;
-}
-
-#rooms > div:last-child > div{
+#rooms > div > div{
 	display: inline-block;
 	vertical-align: top;
 }
 
-#rooms > div:last-child label,
-#rooms > div:last-child input[type="text"]{
+#rooms > div.d_fault label,
+#rooms > div.d_fault input[type="text"]{
 	margin-top: 7px;
 }
 
 #rooms > div > input[type="text"]:last-child{
+	margin-top: 5px;
 	width: 100%;
 }
 
@@ -162,29 +143,15 @@ input[type="submit"]{
 	padding: 0 2px;
 }
 
-#rooms .messages{
-	margin-top: 8px;
-}
-
-#rooms .greentext{
-	color: #5F5;
+.messages{
+	height: 300px;
+	overflow-y: scroll;
+	width: calc(100% - 230px);
 }
 
 #new_tab_notification{
 	font-weight: 700;
 	margin-bottom: 7px;
-}
-
-#new_tab_notification:empty{
-	display: none;
-}
-
-.messages{
-	display: inline-block;
-	height: 350px;
-	max-width: 900px;
-	overflow-y: auto;
-	width: calc(100% - 230px);
 }
 
 .last{
@@ -200,7 +167,7 @@ input[type="submit"]{
 	vertical-align: top;
 }
 
-.roomname{
+.room_name{
 	font-size: 16px;
 	font-weight: 700;
 	text-align: center;
@@ -208,12 +175,14 @@ input[type="submit"]{
 
 .timestamp{
 	color: #BBB;
-	font-size: 0.875em;
+	display: inline-block;
+	font-size: 10px;
+	margin: 0 5px 0 3px;
 }
 
-.userlist{
-	display: inline-block;
-	margin: 5px 0;
+.info_box{
+	height: 300px;
+	width: 230px;
 }
 
 .userlist > li:first-child{

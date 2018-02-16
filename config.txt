@@ -1,0 +1,25 @@
+; 1 - 255
+threads: 3					; How many threads do you want to use? Generally, you want this to be the number of CPU cores you have
+
+guest_name_random_min: 8	; Minimum length for random characters added to random guest names
+guest_name_random_max: 17	; Maximum length for ^^^. Set to same value for consistent length
+
+room_name_random_min: 8		; Minimum length for random characters added to random room names
+room_name_random_max: 36	; Maximum length for ^^^. Set to same value for consistent length
+
+name_length_limit: 22		; How long do you want users' usernames to be able to be?
+room_name_length_limit: 40	; How long do you want room names to be able to be?
+
+; 1 - 65535
+port: 8080					; This is the port number. Make sure this is not the same as the web server port
+
+; 1 - (2^64)-1
+max_message_length: -1		; What is the longest message you want users to send? Counts unicode characters as 1 character. -1 means no (arbitrary) limit
+max_sockets: 4096			; Sockets must be pre-allocated for technical reasons. More sockets use more RAM, and allow more connections. On Linux, you may need to edit `/etc/security/ulimits.conf` or increase the limit temporarily with `ulimit -s`
+
+; PING/PONG is a websocket-level feature that essentially acts as a heartbeat. Set both heartbeat values to 0 to disable
+; seconds 0 - 255, milliseonds 0 - 65535
+ping_pong_heartbeat_seconds: 45
+ping_pong_heartbeat_milliseconds: 0
+ping_pong_response_seconds: 5
+ping_pong_response_milliseconds: 0
