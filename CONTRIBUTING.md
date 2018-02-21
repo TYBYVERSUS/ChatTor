@@ -10,5 +10,7 @@
 10) I didn't make a gitignore to ignore the contents of bin/ or meme files that don't matter. Feel free to add this
 
 Resources:
+
 RFC - https://tools.ietf.org/html/rfc6455 (The RFC is fairly short compared to other RFCs)
+
 Quick Summary - https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
