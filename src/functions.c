@@ -1,3 +1,4 @@
+// For sending a message to a single socket
 void sendToSocket(char *msg, uint64_t length, int fd){
 	unsigned char offset;
 	char* encoded;
@@ -42,6 +43,7 @@ void sendToSocket(char *msg, uint64_t length, int fd){
 	free(encoded);
 }
 
+// Send a message to a whole room
 void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 	struct roomIdentityBST *each = rNode->first;
 	while(each != NULL){
@@ -100,6 +102,7 @@ void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 	}
 }
 
+// Close the socket
 void close_socket(int fd_index){
 	pthread_mutex_lock(&fds_mutex);
 
@@ -110,6 +113,8 @@ void close_socket(int fd_index){
 	fd_counter = fd_index;
 
 	pthread_mutex_unlock(&fds_mutex);
+
+//	Actually clean up data structures. This will probably be unstable as is
 
 //	struct socketBST *sNode = searchSocket(fd);
 

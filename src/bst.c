@@ -1,3 +1,4 @@
+// Verious Binary Search Trees and functions to modify/navigate them
 struct identityNode;
 
 struct roomIdentityBST{
@@ -81,85 +82,8 @@ void* searchNode(void *root, char *name, uint64_t length){
 	return NULL;
 }
 
+// Haven't rewritten this part yet... Here is the code form the legacy branch as reference
 /*
-void insertSocket(struct socketBST *socket){
-	if(sRoot == NULL){
-		sRoot = socket;
-		return;
-	}
-
-	struct socketBST *tmp = sRoot;
-	while(tmp->right != NULL)
-		tmp = tmp->right;
-
-	tmp->right = socket;
-}
-
-void insertIdentity(struct identityBST **root, struct identityBST *identity){
-	if(*root == NULL){
-		*root = identity;
-		return;
-	}
-
-	struct identityBST *tmp = *root;
-	while(tmp->right != NULL)
-		tmp = tmp->right;
-
-	tmp->right = identity;
-}
-
-void insertRoom(struct roomBST *room){
-	if(rRoot == NULL){
-		rRoot = room;
-		return;
-	}
-
-	struct roomBST *tmp = rRoot;
-	while(tmp->right != NULL)
-		tmp = tmp->right;
-
-	tmp->right = room;
-}
-*/
-/*
-struct socketBST* searchSocket(int id){
-	struct socketBST *tmp = sRoot;
-	while(tmp != NULL){
-		if(tmp->id == id)
-			return tmp;
-
-		tmp = tmp->right;
-	}
-
-	return NULL;
-}
-
-struct identityBST* searchIdentity(struct identityBST *root, char* id){
-	struct identityBST *tmp = root;
-	while(tmp != NULL){
-		if(!strcmp(tmp->index, id))
-			return tmp;
-
-		tmp = tmp->right;
-	}
-
-	return NULL;
-}
-
-struct roomBST* searchRoom(char* room){
-	struct roomBST *tmp = rRoot;
-	while(tmp != NULL){
-		if(!strcmp(tmp->room, room) && strlen(room) == strlen(tmp->room))
-			return tmp;
-
-		tmp = tmp->right;
-	}
-
-	return NULL;
-}
-
-
-
 void removeSocket(struct socketBST *socket){
 	if(sRoot == NULL)
 		return;

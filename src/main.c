@@ -13,6 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 
+// This is for setting websocket frame lengths that use more than one byte
 union websocket_frame_length{
 	uint64_t length;
 	unsigned char bytes[8];
@@ -27,6 +28,7 @@ struct thread_pool {
 
 static const char* b64Table="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+// Mostly config.txt options
 int listener_socket;
 unsigned char guest_suffix_min = 8,
 	guest_suffix_max = 16,
@@ -43,16 +45,18 @@ unsigned int name_seed;
 uint64_t max_msg_length = 1000;
 
 int fd_counter = 1, fds_length = 4096;
+
+// Where the poll socket data is stored
 struct pollfd* fds;
 
 pthread_mutex_t fds_mutex, sockets_root_mutex, rooms_root_mutex, thread_setting_socket_mutex;
 pthread_t hk, sig;
 
-// Don't forget to actually make the BSTs into BSTs at some point...
 #include "bst.c"
 #include "functions.c"
 #include "threads.c"
 
+// Initialize the threads, and then just kind of do nothing...
 int main(){
 	// Verify that there is a config file... I can auto-create one later
 	FILE *config = fopen("config.txt", "r+");
@@ -182,7 +186,7 @@ int main(){
 		exit(1);
 	}
 
-	// ...and start declaring the threadpool early so we can pass the pointer to the signal thread...
+	// ...and allocate memory for the threadpool early so we can pass the pointer to the signal thread...
 	struct thread_pool *thread = malloc(sizeof(struct thread_pool)), *first_thread;
 	first_thread = thread;
 
@@ -241,7 +245,7 @@ int main(){
 		exit(1);
 	}
 
-	// Now drops to nobody privileges! Should make own user in perfect world, but I can deal with that later...
+	// Now drop to nobody privileges! Should make own user in perfect world, but I can deal with that later...
 	if(setgid(65534) != 0){
 		printf("Unable to drop group privileges!\n");
 		exit(1);
@@ -252,13 +256,11 @@ int main(){
 		exit(1);
 	}
 
-	// This should be the only output that prints on a successful process start
+	// And we're done... Should probably remove all printfs for production...
 	printf("Web socket server is listening...\n");
 
-	for(;;){
+	for(;;)
 		pause();
-		// Check to make sure thigns are running smoothly from time to time...?
-	}
 
 	return 0;
 }

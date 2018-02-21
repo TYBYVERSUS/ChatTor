@@ -1,3 +1,4 @@
+// This thread should handle PING/PONG and maybe other stuff
 static void* hkFunc(){
 //	struct timespec ping_pong_heartbeat_tv, ping_pong_response_tv;
 //	ping_pong_heartbeat_tv.tv_sec = ping_pong_heartbeat_seconds;
@@ -9,13 +10,10 @@ static void* hkFunc(){
 	for(;;)
 		pause();
 
-	// Rebalance tree
-	// PING/PONG
-
 	return NULL;
 }
 
-// A recursive function used in the signal handler
+// A recursive function used in the signal handler to find the active socket
 int findActiveSocket(int offset, int length, struct thread_pool *thread){
 	if(poll(&fds[offset], length, 0) < 1)
 		return -1;
@@ -39,7 +37,7 @@ int findActiveSocket(int offset, int length, struct thread_pool *thread){
 	return ret;
 }
 
-// Supposedly, locking mutexes can cause deadlocks in signal handling functions, but, since this is its own thread, I don't think it will happen
+// Signal thread. Used to catch SIGIO, find the active socket, and then pass it on to the first avialballe thread in the threadpool
 static void* sigFunc(void *arg){
 	struct thread_pool *thread = (struct thread_pool*)arg;
 	sigset_t signal_set;
@@ -49,18 +47,16 @@ static void* sigFunc(void *arg){
 	sigaddset(&signal_set, SIGIO);
 
 	for(;;){
-		printf("Waiting...\n");
 		sigwait(&signal_set, &caught_signal);
-		printf("CAUGHT SIGIO!\n");
 
 		if(caught_signal != SIGIO){
 			if(caught_signal != 0)
-				printf("Another signal? %i\n", caught_signal);
+				printf("Signal not SIGIO? %i\n", caught_signal);
 
 			continue;
 		}
 
-		// I think this looks better than a do-while with an if in the middle
+		// In my opinion, this is mor readbale using goto than a loop
 		sig_func_do_loop:
 		pthread_mutex_lock(&fds_mutex);
 		fd_index = findActiveSocket(0, fds_length, thread);
@@ -83,6 +79,7 @@ static void* sigFunc(void *arg){
 	return NULL;
 }
 
+// The threadpool function. This will run in parallel with itself. This is the "heavy lifting" for when a socket has activity
 static void* poolFunc(void *arg){
 	char buffer[4096] = {0};
 	int caught_signal;
@@ -93,6 +90,7 @@ static void* poolFunc(void *arg){
 	sigemptyset(&signal_set);
 	sigaddset(&signal_set, SIGUSR1);
 
+	// When the signal handler has set everything up, it will send signal SIGUSR1
 	for(;;){
 		sigwait(&signal_set, &caught_signal);
 
@@ -107,8 +105,8 @@ static void* poolFunc(void *arg){
 
 		printf("\nThread - active fd_index %i!\n", this->fd_index);
 
+		// If the fd_index is 0, it's the listener socket that has activity, which means there's a new socket attempting to open a connection
 		if(!this->fd_index){
-			// Accepting the new socket
 			int new_socket = accept(listener_socket, NULL, NULL);
 			if(new_socket == -1)
 				goto threadpool_done_unlock;
@@ -118,10 +116,12 @@ static void* poolFunc(void *arg){
 
 			recv(new_socket, buffer, 4095, 0);
 
+			// Adding the socket to fds
 			pthread_mutex_lock(&fds_mutex);
 
 			this->fd_index = fd_counter;
 
+			// Setting fd_counteir to the next open fd_index
 			while(fds[++fd_counter].fd != 0){
 				if(fd_counter >= fds_length){
 					printf("TOO MANY SOCKETS! Exiting now...\n");
@@ -129,12 +129,12 @@ static void* poolFunc(void *arg){
 				}
 			}
 
-			// Adding this to fds without a mutex doesn't matter
 			fds[this->fd_index].fd = new_socket;
 			fds[this->fd_index].events = POLLIN;
 
 			pthread_mutex_unlock(&fds_mutex);
 
+			// Now we need to read the buffer and do websocket stuff according to https://tools.ietf.org/html/rfc6455#section-1.3
 			char *wskey = strstr(buffer, "\r\nSec-WebSocket-Key: ");
 			if(wskey == NULL){
 				shutdown(new_socket, SHUT_RDWR);
@@ -213,6 +213,7 @@ static void* poolFunc(void *arg){
 			goto threadpool_done_unlock;
 		}
 
+		// Else, if it's not the listener socket that has activity, we handle it here: https://tools.ietf.org/html/rfc6455#section-5
 		while(poll(&fds[this->fd_index], 1, 0)){
 			char mask[4];
 			union websocket_frame_length len;
@@ -222,7 +223,6 @@ static void* poolFunc(void *arg){
 				if((this_read_length = recv(fds[this->fd_index].fd, &buffer[read_length], 2 - read_length, 0)) > 0)
 					read_length += this_read_length;
 				else{
-					printf("nope 1");
 					close_socket(this->fd_index);
 					goto threadpool_done_unlock;
 				}
@@ -231,7 +231,7 @@ static void* poolFunc(void *arg){
 
 			//   FIN & op = 1          Mask set
 			if(buffer[0] != -127 || buffer[1] > -1){
-				printf("nope 2\n");
+				// If this is a cllose, it might be handled here? Test this please
 				while(recv(fds[this->fd_index].fd, buffer, 4096, 0) == 4096){}
 				close_socket(this->fd_index);
 				goto threadpool_done_unlock;
@@ -245,7 +245,6 @@ static void* poolFunc(void *arg){
 					if((this_read_length = recv(fds[this->fd_index].fd, &buffer[read_length], 8 - read_length, 0)) > 0)
 						read_length += this_read_length;
 					else{
-						printf("nope 3");
 						close_socket(this->fd_index);
 						goto threadpool_done_unlock;
 					}
@@ -264,7 +263,6 @@ static void* poolFunc(void *arg){
 					if((this_read_length = recv(fds[this->fd_index].fd, &buffer[read_length], 2 - read_length, 0)) > 0)
 						read_length += this_read_length;
 					else{
-					printf("nope 4");
 						close_socket(this->fd_index);
 						goto threadpool_done_unlock;
 					}
@@ -280,7 +278,6 @@ static void* poolFunc(void *arg){
 				if((this_read_length = recv(fds[this->fd_index].fd, &mask[read_length], 4 - read_length, 0)) > 0)
 					read_length += this_read_length;
 				else{
-					printf("nope 5");
 					close_socket(this->fd_index);
 					goto threadpool_done_unlock;
 				}
@@ -299,7 +296,6 @@ static void* poolFunc(void *arg){
 				if((this_read_length = recv(fds[this->fd_index].fd, &msg[read_length], len.length - read_length, 0)) > 0)
 					read_length += this_read_length;
 				else{
-					printf("nope 6");
 					close_socket(this->fd_index);
 					goto threadpool_done_unlock;
 				}
@@ -311,11 +307,12 @@ static void* poolFunc(void *arg){
 
 			// Sometimes the Tor Browser Bundle will randomly send "(null)"? I just skip these so that the browser doesn't spam the chat
 			if(!strcmp("(null)", msg)){
-				printf("nope null");
 				goto threadpool_done_unlock;
 			}
 
+			// If/Else ladder of commands
 			else if(!strcmp("chat", msg)){
+				// If it's a normal chat message...
 				char *message, *prepared_message;
 
 				message = strchr(&msg[5], 0) + 1;
@@ -336,6 +333,7 @@ static void* poolFunc(void *arg){
 				free(prepared_message);
 
 			}else if(!strcmp("join", msg)){
+				// If it's a userjoining a new room
 				unsigned char valid = 1;
 				char *name = &msg[5], *room, *trip, *tmp;
 
@@ -456,6 +454,7 @@ static void* poolFunc(void *arg){
 					users = users->next;
 				}
 			}else
+				// Else, probably someone trying to hack me
 				sendToSocket("error\0Unrecognized input!", 25, fds[this->fd_index].fd);
 
 			free_and_continue:
@@ -464,6 +463,7 @@ static void* poolFunc(void *arg){
 
 			msg = NULL;
 
+			// Code from legacy branch for handling invites/leaving. Here for easy reference
 /*
 				// Handle invite
 				if(!strncmp("invite: ", msg, 8)){
@@ -603,6 +603,7 @@ static void* poolFunc(void *arg){
 	*/
 		}
 
+		// Set this thread's fd_index to -1 and then unlock the thread mutex
 		threadpool_done_unlock:
 		this->fd_index = -1;
 		pthread_mutex_unlock(&(this->mutex));
