@@ -8,3 +8,7 @@
 8) Keep the code performant, and don't use more resources than you need (don't use a long to count to 5, do use unsigned ints where appropriate, etc)
 9) Try to keep things agnostic of OS/compiler. I've been trying to do this myself, but may have used something non-standard without realizing it. NOTE: SIGIO is not POSIX (yet?), but SIGPOLL is marked as obsolescent and doesn't seem to work? I don't know. I'm using SIGIO here
 10) I didn't make a gitignore to ignore the contents of bin/ or meme files that don't matter. Feel free to add this
+
+Resources:
+RFC - https://tools.ietf.org/html/rfc6455 (The RFC is fairly short compared to other RFCs)
+Quick Summary - https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
