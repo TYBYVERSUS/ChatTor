@@ -11,5 +11,7 @@
 11) Since there are many, many variables, I think it would be nice to CamelCase global variables and functions, also Capitalize global variables (but not functions), and reserve the lower_case syntax for local variables. I'll format everything to this eventually (unless someone wants to beat me to it). If this is stupid, tell me
 
 Resources:
+
 RFC - https://tools.ietf.org/html/rfc6455 (The RFC is fairly short compared to other RFCs)
+
 Quick Summary - https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
