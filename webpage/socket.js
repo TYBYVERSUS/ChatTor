@@ -63,7 +63,7 @@ socket.onmessage = function(e){
 		case 'hi':
 			console.log('.'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))+'{color:#'+datas[3]+';}');
 
-			document.styleSheets[0].insertRule('.'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))+'{color:#'+datas[3]+';}');
+			document.getElementById('dynamic_style_sheet').sheet.insertRule('.'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))+'{color:#'+datas[3]+';}');
 			var li = document.createElement('li');
 			li.textContent = datas[1];
 			li.className = attrEncode(datas[1]+'\0'+datas[2]);
@@ -104,6 +104,10 @@ socket.onmessage = function(e){
 			room_div.getElementsByClassName('room_name')[0].textContent = datas[1];
 		break;
 
+		case "invited":
+			console.log(e, datas);
+		break;
+
 		case "error":
 			alert(datas[1]);
 		break;
@@ -118,7 +122,7 @@ window.onload = function(){
 
 		if(document.querySelector('#tabs > .selected.d_fault') !== null){
 			console.log('joining');
-			socket.send("join\0"+document.getElementById('name').value + "\0" + document.getElementById('room').value + "\0TrIP HERE");
+			socket.send("join\0"+document.getElementById('room').value + "\0" + document.getElementById('name').value);
 		}else{
 			var input = e.explicitOriginalTarget;
 

@@ -258,6 +258,7 @@ int main(){
 
 	// And we're done... Should probably remove all printfs for production...
 	printf("Web socket server is listening...\n");
+	// Also a special note, printf is technically not thread safe lmao. If you know a thread safe way to print debug info, let me know
 
 	for(;;)
 		pause();

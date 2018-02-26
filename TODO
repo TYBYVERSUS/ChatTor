@@ -3,7 +3,6 @@ I might update this periodically when things get done or I think of new things t
 Top Priority:
 
 Websocket Server (C):
- - Recreate "invite" feature (consult commented out code in threads.c)
  - Recreate "leave" feature (consult commented out code in threads.c)
  - Add feature for users to change their names without leaving and re-entering
  - Make the "close_socket" function in functions.c actually clean data structures

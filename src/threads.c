@@ -194,7 +194,7 @@ static void* poolFunc(void *arg){
 			}
 
 			// Insert socket "BST" node
-			sprintf(buffer, "%i", this->fd_index);
+			sprintf(buffer, "%i", fds[this->fd_index].fd);
 
 			struct socketBST *socket_node = malloc(sizeof(struct socketBST));
 			socket_node->name = malloc(strlen(buffer) + 1);
@@ -289,7 +289,7 @@ static void* poolFunc(void *arg){
 				goto threadpool_done_unlock;
 			}
 
-			char *msg = malloc(len.length);
+			char *msg = malloc(len.length + 1);
 
 			read_length = 0;
 			while((uint64_t)read_length < len.length)
@@ -318,7 +318,7 @@ static void* poolFunc(void *arg){
 				message = strchr(&msg[5], 0) + 1;
 				message = strchr(message, 0) + 1;
 
-				sprintf(buffer, "%i", this->fd_index);
+				sprintf(buffer, "%i", fds[this->fd_index].fd);
 				struct socketBST *sNode =  searchNode(sockets_root, buffer, strlen(buffer) + 1);
 				struct socketIdentityBST *sIdentity = searchNode(sNode->identities, &msg[5], message - &msg[5]);
 
@@ -332,24 +332,17 @@ static void* poolFunc(void *arg){
 				sendToRoom(prepared_message, strlen(message) + strlen(sIdentity->identity->name) + 27, sIdentity->identity->roomBST);
 				free(prepared_message);
 
+
 			}else if(!strcmp("join", msg)){
-				// If it's a userjoining a new room
-				unsigned char valid = 1;
-				char *name = &msg[5], *room, *trip, *tmp;
+				// If it's a user joining a new room
+				char *room = &msg[5], *name, *tmp;
 
-				if(len.length < 7 || 6 + strlen(name) == len.length)
-					valid = 0;
-
-				if(valid && 7 + strlen(name) + strlen((room = &name[strlen(name) + 1])) == len.length)
-					valid = 0;
-
-				if(!valid){
+				if(len.length < 7 || 6 + strlen(room) == len.length){
 					sendToSocket("error\0Invalid join!", 19, fds[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
-				trip = &room[strlen(room) + 1];
-				trip = trip;
+				name = &room[strlen(room) + 1];
 
 				if(!strlen(name)){
 					unsigned char tmplen = random() % (guest_suffix_max - guest_suffix_min);
@@ -425,7 +418,8 @@ static void* poolFunc(void *arg){
 				sIdentity->identity->color = "88F";
 				strcpy(&(sIdentity->identity->trip[0]), "abcdefghijklmnopqrst");
 
-				sprintf(buffer, "%i", this->fd_index);
+				sprintf(buffer, "%i", fds[this->fd_index].fd);
+
 				sIdentity->identity->socketBST = searchNode(sockets_root, buffer, strlen(buffer) + 1);
 				sIdentity->identity->roomBST = rNode;
 
@@ -453,83 +447,77 @@ static void* poolFunc(void *arg){
 
 					users = users->next;
 				}
+
+			}else if(!strcmp("invite", msg)){
+				unsigned char valid = 1;
+				char *room = &msg[7], *name, *to_room;
+
+				if(len.length < 9 || 8 + strlen(room) == len.length)
+					valid = 0;
+
+				if(valid && 9 + strlen(room) + strlen((name = &room[strlen(room) + 1])) == len.length)
+					valid = 0;
+
+				if(!valid){
+					sendToSocket("error\0Invalid invite!", 21, fds[this->fd_index].fd);
+					goto free_and_continue;
+				}
+
+				to_room = &name[strlen(name) + 1];
+
+				if(!strcmp(room, to_room)){
+					sendToSocket("error\0Can't invite to current room!", 35, fds[this->fd_index].fd);
+					goto free_and_continue;
+				}
+
+				// We need to verify that the room the other user is being invited to is a room that this current user is in
+				sprintf(buffer, "%i", fds[this->fd_index].fd);
+				struct socketBST* this_socket_node = searchNode(sockets_root, buffer, strlen(buffer));
+				struct socketIdentityBST* socket_identity_tmp = this_socket_node->identities;
+
+				while(socket_identity_tmp != NULL){
+					if(!strcmp(socket_identity_tmp->identity->roomBST->name, to_room))
+						break;
+
+					socket_identity_tmp = socket_identity_tmp->right;
+				}
+
+				if(socket_identity_tmp == NULL){
+					sendToSocket("error\0Invalid room!", 19, fds[this->fd_index].fd);
+					goto free_and_continue;
+				}
+
+
+				// Now we have to find the room/user they are trying to invite...
+				struct roomBST* room_node = searchNode(rooms_root, room, strlen(room) + 1);
+				if(room_node == NULL){
+					sendToSocket("error\0Room not found!", 21, fds[this->fd_index].fd);
+					goto free_and_continue;
+				}
+					
+
+				struct roomIdentityBST* identity_node = searchNode(room_node->identities, room, strlen(name) + strlen(room) + 1);
+				if(identity_node == NULL){
+					sendToSocket("error\0User not found!", 21, fds[this->fd_index].fd);
+					goto free_and_continue;
+				}
+
+				// Then get the socket number and send the invite!
+				sprintf(buffer, "invite%c%s", 0, to_room);
+				sendToSocket(buffer, 7 + strlen(to_room), atoi(identity_node->identity->socketBST->name));
+
 			}else
 				// Else, probably someone trying to hack me
 				sendToSocket("error\0Unrecognized input!", 25, fds[this->fd_index].fd);
 
 			free_and_continue:
-			if(msg != NULL)
+			if(msg != NULL){
 				free(msg);
-
-			msg = NULL;
+				msg = NULL;
+			}
 
 			// Code from legacy branch for handling invites/leaving. Here for easy reference
 /*
-				// Handle invite
-				if(!strncmp("invite: ", msg, 8)){
-					char *iId, *iName, *iRoom;
-
-					iId = msg + 8;
-					iName = strstr(iId, " ");
-					if(iName == NULL)
-						continue;
-
-					iName[0] = 0;
-					iName++;
-
-					iRoom = strstr(iName, " ");
-					if(iRoom == NULL)
-						continue;
-
-					iRoom[0] = 0;
-					iRoom++;
-
-					struct roomBST *rNode = searchRoom(iRoom);
-					if(rNode == NULL)
-						continue;
-
-					struct identityBST *rIdentity = rNode->identities;
-					while(rIdentity != NULL){
-						if(!strcmp(rIdentity->identity->name, iName) && strlen(iName) == strlen(rIdentity->identity->name))
-							break;
-
-						rIdentity = rIdentity->right;
-					}
-
-					if(rIdentity == NULL)
-						continue;
-
-					struct identityBST *thisIdentity = searchIdentity(activeSocket->identities, iId);
-
-					char *encoded;
-					unsigned char offset;
-					unsigned short messageLength = 30 + strlen(thisIdentity->identity->room->room);
-
-					if(125 < messageLength){
-						offset = 4;
-						encoded = smalloc(messageLength + 4);
-
-						encoded[0] = -127;
-						encoded[1] = 126;
-						encoded[2] = (unsigned char)(messageLength/256);
-						encoded[3] = messageLength % 256;
-					}else{
-						offset = 2;
-						encoded = smalloc(messageLength + 2);
-
-						encoded[0] = -127;
-						encoded[1] = messageLength;
-					}
-
-					// Invites don't really care about the exact identity invited, only the user...
-					sprintf(&encoded[offset], "{\"invite\":\"%s\",\"event\":\"invite\"}", thisIdentity->identity->room->room);
-					send(rIdentity->identity->socket->id, encoded, messageLength + offset, MSG_NOSIGNAL);
-
-					free(encoded);
-
-					continue;
-				}
-
 				// If a user wants to leave a room
 				if(!strncmp("leave: ", msg, 7)){
 					if(msg + 7 == NULL)
