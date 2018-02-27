@@ -61,12 +61,14 @@ socket.onmessage = function(e){
 		break;
 
 		case 'hi':
-			console.log('.'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))+'{color:#'+datas[3]+';}');
-
 			document.getElementById('dynamic_style_sheet').sheet.insertRule('.'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))+'{color:#'+datas[3]+';}');
+
+			var span = document.createElement('span');
+			span.textContent = datas[1];
+			span.className = attrEncode(datas[1]+'\0'+datas[2]);
+
 			var li = document.createElement('li');
-			li.textContent = datas[1];
-			li.className = attrEncode(datas[1]+'\0'+datas[2]);
+			li.appendChild(span);
 
 			document.querySelector('[data-name="'+attrEncode(datas[4]+'\0'+datas[5])+'"]').parentNode.getElementsByClassName('userlist')[0].appendChild(li);
 		break;
@@ -124,7 +126,7 @@ window.onload = function(){
 			console.log('joining');
 			socket.send("join\0"+document.getElementById('room').value + "\0" + document.getElementById('name').value);
 		}else{
-			var input = e.explicitOriginalTarget;
+			var input = document.querySelector('#rooms > .selected input');
 
 			if(!input.value.length)
 				return;
