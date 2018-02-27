@@ -195,7 +195,7 @@ static void* poolFunc(void *arg){
 			}
 
 			// Insert socket "BST" node
-			sprintf(buffer, "%i", fds[this->fd_index].fd);
+			sprintf(buffer, "%i", this->fd_index);
 
 
 			struct socketBST *socket_node = bstMakeSocketBST(buffer, strlen(buffer)+1, (struct socketIdentityBST*)&bstNIL, new_socket);
@@ -224,7 +224,7 @@ static void* poolFunc(void *arg){
 
 			//   FIN & op = 1          Mask set
 			if(buffer[0] != -127 || buffer[1] > -1){
-				// If this is a cllose, it might be handled here? Test this please
+				// If ths socket is closed, it might be handled here? Test this please
 				while(recv(fds[this->fd_index].fd, buffer, 4096, 0) == 4096){}
 				close_socket(this->fd_index);
 				goto threadpool_done_unlock;
@@ -394,8 +394,7 @@ static void* poolFunc(void *arg){
 				strcpy(tempIdentity->color, "88F");
 				strcpy(&(tempIdentity->trip[0]), "abcdefghijklmnopqrst");
 
-				
-				sprintf(buffer, "%i", fds[this->fd_index].fd);
+				sprintf(buffer, "%i", this->fd_index);
 
 				tempIdentity->socketBST = bstSearch(buffer, strlen(buffer) + 1, (void*) sockets_root);
 				tempIdentity->roomBST = rNode;
@@ -417,11 +416,19 @@ static void* poolFunc(void *arg){
 				sprintf(buffer, "joined%c%s%c%s%c%s", 0, room, 0, name, 0, sIdentity->identity->trip);
 				sendToSocket(buffer, 29 + strlen(name) + strlen(room), fds[this->fd_index].fd);
 
+
 				struct roomIdentityBST *users = bstFirst(rNode);
 				while((struct bstNode*) users != &bstNIL){
 					sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, users->identity->name, 0, users->identity->trip, 0, users->identity->color, 0, sIdentity->key);
 					memcpy(&buffer[26 + strlen(users->identity->name) + strlen(users->identity->color)], sIdentity->key, sIdentity->keySize);
 					sendToSocket(buffer, 25 + strlen(users->identity->name) + strlen(users->identity->color) + sIdentity->keySize, fds[this->fd_index].fd);
+
+					if(sIdentity->identity != users->identity){
+						sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, sIdentity->identity->name, 0, sIdentity->identity->trip, 0, sIdentity->identity->color, 0, users->identity->name);
+						memcpy(&buffer[26 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color)], users->key, users->keySize);
+						sendToSocket(buffer, 26 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color) + sIdentity->keySize, sIdentity->identity->socketBST->fd);
+					}
+					
 
 					users = bstNext(users);
 				}
@@ -449,9 +456,11 @@ static void* poolFunc(void *arg){
 				}
 
 				// We need to verify that the room the other user is being invited to is a room that this current user is in
-				sprintf(buffer, "%i", fds[this->fd_index].fd);
+
+				sprintf(buffer, "%i", this->fd_index);
 				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, sockets_root);
 				struct socketIdentityBST* socket_identity_tmp = bstSearch(to_room, strlen(to_room)+1, (void*) this_socket_node->identities);
+
 
 				if((struct bstNode*) socket_identity_tmp == &bstNIL){
 					sendToSocket("error\0Invalid room!", 19, fds[this->fd_index].fd);
@@ -475,7 +484,9 @@ static void* poolFunc(void *arg){
 
 				// Then get the socket number and send the invite!
 				sprintf(buffer, "invite%c%s", 0, to_room);
-				sendToSocket(buffer, 7 + strlen(to_room), atoi(identity_node->identity->socketBST->key));
+
+				sendToSocket(buffer, 7 + strlen(to_room), identity_node->identity->socketBST->fd);
+
 
 			}else
 				// Else, probably someone trying to hack me

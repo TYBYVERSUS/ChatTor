@@ -5,6 +5,10 @@ body{
 	font-size: 14px;
 }
 
+:focus{
+	outline: 0;
+}
+
 a{
 	color: #FFF;
 }
