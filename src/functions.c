@@ -46,7 +46,7 @@ void sendToSocket(char *msg, uint64_t length, int fd){
 // Send a message to a whole room
 void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 	struct roomIdentityBST *each = bstFirst(rNode->identities);
-	while(each != &bstNIL){
+	while((struct bstNode*) each != &bstNIL){
 		union websocket_frame_length len;
 		unsigned char offset;
 		char *encoded;
@@ -159,3 +159,4 @@ void randomSuffix(char **rand, unsigned long len){
 
 	(*rand)[prelen+len] = 0;
 }
+

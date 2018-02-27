@@ -198,7 +198,7 @@ static void* poolFunc(void *arg){
 			sprintf(buffer, "%i", fds[this->fd_index].fd);
 
 
-			struct socketBST *socket_node = bstMakeSocketBST(buffer, strlen(buffer)+1, &bstNIL, new_socket);
+			struct socketBST *socket_node = bstMakeSocketBST(buffer, strlen(buffer)+1, (struct socketIdentityBST*)&bstNIL, new_socket);
 
 			// &sockets_root_mutex was previously also sent to insert
 			bstInsert((void*)socket_node, (void**)&sockets_root);
@@ -315,7 +315,7 @@ static void* poolFunc(void *arg){
 				struct socketBST *sNode =  bstSearch(buffer, strlen(buffer) + 1, (void*) sockets_root);
 				struct socketIdentityBST *sIdentity = bstSearch(&msg[5], message - &msg[5], (void*) sNode->identities);
 
-				if(sIdentity == &bstNIL){
+				if((struct bstNode*) sIdentity == &bstNIL){
 					sendToSocket("error\0Invalid identity", 22, fds[this->fd_index].fd);
 					goto free_and_continue;
 				}
@@ -364,8 +364,8 @@ static void* poolFunc(void *arg){
 	//			stringChop(&room, 40);
 				struct roomBST *rNode = bstSearch(room, strlen(room) + 1, (void*) rooms_root);
 
-				if(rNode == &bstNIL){
-					rNode = bstMakeRoomBST(room, strlen(room)+1, &bstNIL);
+				if((struct bstNode*) rNode == &bstNIL){
+					rNode = bstMakeRoomBST(room, strlen(room)+1, (struct roomIdentityBST*)&bstNIL);
 
 					// previously rooms_root_mutex was also sent to the function
 					bstInsert((void*) rNode, (void**)&rooms_root);
@@ -373,7 +373,7 @@ static void* poolFunc(void *arg){
 					// Make sure the name isn't already being used in that room...
 					struct roomIdentityBST* tmp = bstSearch(name, strlen(name)+1, rNode->identities);
 
-					if(tmp != &bstNIL){
+					if((struct bstNode*) tmp != &bstNIL){
 						sendToSocket("error\0This username is already taken!", 37, fds[this->fd_index].fd);
 
 						free(room);
@@ -418,7 +418,7 @@ static void* poolFunc(void *arg){
 				sendToSocket(buffer, 29 + strlen(name) + strlen(room), fds[this->fd_index].fd);
 
 				struct roomIdentityBST *users = bstFirst(rNode);
-				while(users != &bstNIL){
+				while((struct bstNode*) users != &bstNIL){
 					sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, users->identity->name, 0, users->identity->trip, 0, users->identity->color, 0, sIdentity->key);
 					memcpy(&buffer[26 + strlen(users->identity->name) + strlen(users->identity->color)], sIdentity->key, sIdentity->keySize);
 					sendToSocket(buffer, 25 + strlen(users->identity->name) + strlen(users->identity->color) + sIdentity->keySize, fds[this->fd_index].fd);
@@ -453,7 +453,7 @@ static void* poolFunc(void *arg){
 				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, sockets_root);
 				struct socketIdentityBST* socket_identity_tmp = bstSearch(to_room, strlen(to_room)+1, (void*) this_socket_node->identities);
 
-				if(socket_identity_tmp == &bstNIL){
+				if((struct bstNode*) socket_identity_tmp == &bstNIL){
 					sendToSocket("error\0Invalid room!", 19, fds[this->fd_index].fd);
 					goto free_and_continue;
 				}
@@ -461,14 +461,14 @@ static void* poolFunc(void *arg){
 
 				// Now we have to find the room/user they are trying to invite...
 				struct roomBST* room_node = bstSearch(room, strlen(room) + 1, (void*) rooms_root);
-				if(room_node == &bstNIL){
+				if((struct bstNode*) room_node == &bstNIL){
 					sendToSocket("error\0Room not found!", 21, fds[this->fd_index].fd);
 					goto free_and_continue;
 				}
 					
 				//                                                           SHOULDN'T THIS BE +2 ?
 				struct roomIdentityBST* identity_node = bstSearch(room, strlen(name) + strlen(room) + 1, (void*) room_node->identities);
-				if(identity_node == &bstNIL){
+				if((struct bstNode*) identity_node == &bstNIL){
 					sendToSocket("error\0User not found!", 21, fds[this->fd_index].fd);
 					goto free_and_continue;
 				}
@@ -570,3 +570,4 @@ static void* poolFunc(void *arg){
 
 	return NULL;
 }
+
