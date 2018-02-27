@@ -45,15 +45,15 @@ void sendToSocket(char *msg, uint64_t length, int fd){
 
 // Send a message to a whole room
 void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
-	struct roomIdentityBST *each = rNode->first;
-	while(each != NULL){
+	struct roomIdentityBST *each = bstFirst(rNode->identities);
+	while(each != &bstNIL){
 		union websocket_frame_length len;
 		unsigned char offset;
 		char *encoded;
 
 		printf("length: %"PRIu64"\n", length);
 
-		length += each->name_length;
+		length += each->keySize;
 		len.length = length;
 
 		printf("new length: %"PRIu64"\n", length);
@@ -88,17 +88,17 @@ void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 			encoded[9] = len.bytes[0];
 		}
 
-		length -= each->name_length;
+		length -= each->keySize;
 		printf("final length: %"PRIu64"\n", length);
 		memcpy(&encoded[offset], msg, length);
 		encoded[offset+length] = 0;
 
-		memcpy(&encoded[length+offset+1], each->name, each->name_length);
-		encoded[offset+length+each->name_length] = 0;
-		send(each->identity->socketBST->fd, encoded, offset + length + each->name_length, 0);
+		memcpy(&encoded[length+offset+1], each->key, each->keySize);
+		encoded[offset+length+each->keySize] = 0;
+		send(each->identity->socketBST->fd, encoded, offset + length + each->keySize, 0);
 
 		free(encoded);
-		each = each->next;
+		each = bstNext(each);
 	}
 }
 
