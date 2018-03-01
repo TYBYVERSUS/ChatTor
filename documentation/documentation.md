@@ -6,27 +6,27 @@ I will attempt to explain the general flow of the program, and how the data stru
 ## Program flow
 
 1. Start websocket server
-    1. Allocate memory for `struct pollfd *fds`
-    2. Create listener socket
-    3. Set up signal handler for signal handler thread
-    4. Create threads and mutexes
-    5. Drop privileges from root to nobody (or a new user)
-    6. Sleep main
+  1. Allocate memory for `struct pollfd *fds`
+  2. Create listener socket
+  3. Set up signal handler for signal handler thread
+  4. Create threads and mutexes
+  5. Drop privileges from root to nobody (or a new user)
+  6. Sleep main
 
 2. Wait for signal, then handle signal
-    1. Wait for signal
-    2. Find socket that triggered the signal
-    3. `if(fd_index == 0)`, listener socket is active and we need to accept a new socket. Goto 9
-    4. Read data from socket and [decode the websocket frame](https://tools.ietf.org/html/rfc6455#section-5)
-    5. If this is a close frame, close the socket, send "bye"s to room, remove all of this socket's identities, remove all empty rooms, and remove socket from socketBST. Goto 9
-    6. `if(msg == "(null)")`, ignore the message and Goto 9. TBB will random send the message "(null)" for some reason...
-    7. Determine command (the buffer should be a string with arguments delimited by NULL bytes. The command should be the first "string")
-      - **chat**: This is a normal chat message. Relay it to everyone else in the room (all of `sender->roomBST->identites`)
-      - **join**: An identity is being created. Send new identity a "join" response, everyone else in the room a "hi", and then that identity a "hi" for everyone already in the room in chronological order with older identity being first.
-      - **invite**: Discreetly send a room name to a socket. Sending user should be in the room being sent, and the receiving socket will need to be found by identity.
-      - **leave**: An identity is being destroyed. Send "bye"s to room, remove identity from identity BSTs, close empty rooms.
-    8. Goto 4 until all data is read from socket buffer. Multiple frames may be waiting
-    9. Free data, unlock thead mutex. Goto 1
+  1. Wait for signal
+  2. Find socket that triggered the signal
+  3. `if(fd_index == 0)`, listener socket is active and we need to accept a new socket. Goto 9
+  4. Read data from socket and [decode the websocket frame](https://tools.ietf.org/html/rfc6455#section-5)
+  5. If this is a close frame, close the socket, send "bye"s to room, remove all of this socket's identities, remove all empty rooms, and remove socket from socketBST. Goto 9
+  6. `if(msg == "(null)")`, ignore the message and Goto 9. TBB will random send the message "(null)" for some reason...
+  7. Determine command (the buffer should be a string with arguments delimited by NULL bytes. The command should be the first "string")
+    - **chat**: This is a normal chat message. Relay it to everyone else in the room (all of `sender->roomBST->identites`)
+    - **join**: An identity is being created. Send new identity a "join" response, everyone else in the room a "hi", and then that identity a "hi" for everyone already in the room in chronological order with older identity being first.
+    - **invite**: Discreetly send a room name to a socket. Sending user should be in the room being sent, and the receiving socket will need to be found by identity.
+    - **leave**: An identity is being destroyed. Send "bye"s to room, remove identity from identity BSTs, close empty rooms.
+  8. Goto 4 until all data is read from socket buffer. Multiple frames may be waiting
+  9. Free data, unlock thead mutex. Goto 1
  
 ![Image of program flow](flow.png)
 
