@@ -5,7 +5,7 @@ I will attempt to explain the general flow of the program, and how the data stru
 
 ## Program flow
 
-  1. Start websocket server
+1. Start websocket server
     1. Allocate memory for `struct pollfd *fds`
     2. Create listener socket
     3. Set up signal handler for signal handler thread
@@ -13,7 +13,7 @@ I will attempt to explain the general flow of the program, and how the data stru
     5. Drop privileges from root to nobody (or a new user)
     6. Sleep main
 
-  2. Wait for signal, then handle signal
+2. Wait for signal, then handle signal
     1. Wait for signal
     2. Find socket that triggered the signal
     3. `if(fd_index == 0)`, listener socket is active and we need to accept a new socket. Goto 9
