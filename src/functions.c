@@ -46,7 +46,8 @@ void sendToSocket(char *msg, uint64_t length, int fd){
 // Send a message to a whole room
 void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 	struct roomIdentityBST *each = bstFirst(rNode->identities);
-	while((struct bstNode*) each != &bstNIL){
+
+	while(each != NULL){
 		union websocket_frame_length len;
 		unsigned char offset;
 		char *encoded;
@@ -95,7 +96,7 @@ void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 
 		memcpy(&encoded[length+offset+1], each->key, each->keySize);
 		encoded[offset+length+each->keySize] = 0;
-		send(each->identity->socketBST->fd, encoded, offset + length + each->keySize, 0);
+		send(each->identity->socketNode->fd, encoded, offset + length + each->keySize, 0);
 
 		free(encoded);
 		each = bstNext(each);

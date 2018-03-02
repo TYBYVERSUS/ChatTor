@@ -13,6 +13,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define min(x, y) (x < y ? x : y)
+
 // This is for setting websocket frame lengths that use more than one byte
 union websocket_frame_length{
 	uint64_t length;
