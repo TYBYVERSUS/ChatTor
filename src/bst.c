@@ -1,8 +1,10 @@
 // Various Binary Search Trees and functions to modify/navigate them
 
+// This is probably broken right now. I will get back to this after I add 1 other important thing
+
 enum rbColors {bstBlack, bstRed};
 
-// Should only be used for typecasting
+// Should only be used for typecasting?
 struct bstNode {
 	char *key;
 	unsigned int keySize; // Includes the terminating NULL byte

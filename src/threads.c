@@ -275,13 +275,7 @@ static void* poolFunc(void *arg){
 					goto threadpool_done_unlock;
 				}
 
-			// Preliminary check for message length before we allocate memory. We assume, worst case, everything is really long unicode
-			if(len.length > max_msg_length * 4){
-				while(recv(fds[this->fd_index].fd, buffer, 4096, 0) == 4096){}
-				printf("Message too long with length: %"PRIu64"\n", len.length);
-				goto threadpool_done_unlock;
-			}
-
+			// I'd like to set this up to read from the socket in chunks rather than malloc... eventually. Or maybe do some magical socket stuff I don't know how to do yet.
 			char *msg = malloc(len.length + 1);
 
 			read_length = 0;
@@ -299,9 +293,8 @@ static void* poolFunc(void *arg){
 				msg[read_length] ^= mask[read_length%4];
 
 			// Sometimes the Tor Browser Bundle will randomly send "(null)"? I just skip these so that the browser doesn't spam the chat
-			if(!strcmp("(null)", msg)){
+			if(!strcmp("(null)", msg))
 				goto threadpool_done_unlock;
-			}
 
 			// If/Else ladder of commands
 			else if(!strcmp("chat", msg)){
@@ -310,6 +303,8 @@ static void* poolFunc(void *arg){
 
 				message = strchr(&msg[5], 0) + 1;
 				message = strchr(message, 0) + 1;
+
+				stringChop(&message, max_msg_length);
 
 				sprintf(buffer, "%i", this->fd_index);
 				struct socketBST *sNode =  bstSearch(buffer, strlen(buffer) + 1, (void*) sockets_root);
@@ -324,7 +319,6 @@ static void* poolFunc(void *arg){
 				sprintf(prepared_message, "chat%c%s%c%s%c%s", 0, sIdentity->identity->name, 0, sIdentity->identity->trip, 0, message);
 				sendToRoom(prepared_message, strlen(message) + strlen(sIdentity->identity->name) + 27, sIdentity->identity->roomNode);
 				free(prepared_message);
-
 
 			}else if(!strcmp("join", msg)){
 				// If it's a user joining a new room
@@ -348,7 +342,7 @@ static void* poolFunc(void *arg){
 					name = tmp;
 				}
 
-	//			stringChop(&name, 22);
+				stringChop(&name, name_limit);
 
 				if(!strlen(room)){
 					unsigned char tmplen = random() % (room_suffix_max - room_suffix_min);
@@ -361,7 +355,7 @@ static void* poolFunc(void *arg){
 					room = tmp;
 				}
 
-	//			stringChop(&room, 40);
+				stringChop(&room, room_name_limit);
 				struct roomBST *rNode = bstSearch(room, strlen(room) + 1, (void*) rooms_root);
 
 				if((struct bstNode*) rNode == NULL){

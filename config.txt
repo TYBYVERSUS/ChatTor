@@ -14,8 +14,8 @@ room_name_length_limit: 40	; How long do you want room names to be able to be?
 port: 8080					; This is the port number. Make sure this is not the same as the web server port
 
 ; 1 - (2^64)-1
-max_message_length: -1		; What is the longest message you want users to send? Counts unicode characters as 1 character. -1 means no (arbitrary) limit
-max_sockets: 4096			; Sockets must be pre-allocated for technical reasons. More sockets use more RAM, and allow more connections. On Linux, you may need to edit `/etc/security/ulimits.conf` or increase the limit temporarily with `ulimit -s`
+max_message_length: 500		; What is the longest message you want users to send? Counts unicode characters as 1 character. -1 means no (arbitrary) limit
+max_sockets: 512			; Sockets must be pre-allocated for technical reasons. More sockets use more RAM, and allow more connections. On Linux, you may need to edit `/etc/security/ulimits.conf` or increase the limit temporarily with `ulimit -s`
 
 ; PING/PONG is a websocket-level feature that essentially acts as a heartbeat. Set both heartbeat values to 0 to disable
 ; seconds 0 - 255, milliseonds 0 - 65535
