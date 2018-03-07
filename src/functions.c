@@ -6,14 +6,11 @@ void stringChop(char **str, uint64_t length){
 		return;
 
 	// The first byte of a unicode character will be >= 0xC2, and then the following bytes for that unicode character will be 0xBF >= byte >= 0x80
-	for(i=0, offset=0; i < length && (*str)[offset] != 0;i++){
-		printf("%"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %hhu %c\n", length, len, offset, i, (unsigned char)(*str)[offset], (*str)[offset]);
-
+	for(i=0, offset=0; i < length && (*str)[offset] != 0;i++)
 		if((unsigned char)(*str)[offset] >= 0xC2)
 			while(0xBF >= (unsigned char)(*str)[++offset] && (unsigned char)(*str)[offset] >= 0x80){}
 		else
 			offset++;
-	}
 
 	(*str)[offset] = 0;
 }
