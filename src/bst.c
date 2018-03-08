@@ -1,6 +1,6 @@
 // Various Binary Search Trees and functions to modify/navigate them
 
-// This is probably broken right now. I will get back to this after I add 1 other important thing
+// This is definitely broken right now. I will fix this next
 
 enum rbColors {bstBlack, bstRed};
 

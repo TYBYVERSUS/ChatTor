@@ -1,8 +1,8 @@
 // Limit string to length characters. Return number of bytes
 void stringChop(char **str, uint64_t length){
-	uint64_t i, offset, len = strlen(*str);
+	uint64_t i, offset;
 
-	if(len <= length)
+	if(strlen(*str) <= length)
 		return;
 
 	// The first byte of a unicode character will be >= 0xC2, and then the following bytes for that unicode character will be 0xBF >= byte >= 0x80
@@ -132,40 +132,28 @@ void close_socket(int fd_index){
 
 	pthread_mutex_unlock(&fds_mutex);
 
-//	Actually clean up data structures. This will probably be unstable as is
+	char buffer[64];
+	sprintf(buffer, "%i", fd_index);
+	struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, sockets_root);
 
-//	struct socketBST *sNode = searchSocket(fd);
+	unsigned short index_length;
+	while(this_socket_node->identities != NULL){
+		index_length = strlen(this_socket_node->identities->key);
+		index_length += strlen(&this_socket_node->identities->key[index_length + 1]) + 2;
 
-//	if(sNode == NULL)
-//		return;
+		struct identityNode *identity_node = this_socket_node->identities->identity;
+		struct roomIdentityBST *room_identity = bstSearch(this_socket_node->identities->key, index_length, identity_node->roomNode->identities);
 
-/*	struct identityBST *sIdentity = sNode->identities;
-	while(sIdentity != NULL){
-		struct roomBST *rNode = sIdentity->identity->room;
-		struct identityBST *rIdentity = searchIdentity(rNode->identities, sIdentity->index);
+		bstRemoveNode(room_identity, (void**)&identity_node->roomNode->identities);
+		bstRemoveNode(this_socket_node->identities, (void**)&this_socket_node->identities);
 
-		removeIdentity(&rNode->identities, rIdentity);
+		if(identity_node->roomNode->identities == NULL)
+			bstRemoveNode(identity_node->roomNode, (void**)&rooms_root);
 
-		if(rNode->identities == NULL)
-			removeRoom(rNode);
-		else{
-			char* bye;
-			bye = smalloc(25 + strlen(sIdentity->identity->name));
-			sprintf(bye, "{\"event\":\"bye\",\"user\":\"%s\"}", sIdentity->identity->name);
-			sendToRoom(bye, sIdentity->identity->room->room);
-			free(bye);
-		}
-
-		free(sIdentity->identity->name);
-		free(sIdentity->identity->color);
-		free(sIdentity->identity);
-
-		removeIdentity(&sNode->identities, sIdentity);
-
-		sIdentity = sNode->identities;
+		free(identity_node);
 	}
 
-	removeSocket(sNode);*/
+	bstRemoveNode(this_socket_node, (void**)&sockets_root);
 }
 
 // A function for adding a random suffix to a string (b64 charset without + and /).

@@ -383,7 +383,7 @@ static void* poolFunc(void *arg){
 				struct identityNode* tempIdentity = malloc(sizeof(struct identityNode));
 				tempIdentity->name = malloc(strlen(name)+1);
 				strcpy(tempIdentity->name, name);
-	//				sIdentity->identity->color = getNameColor(name);
+				// sIdentity->identity->color = getNameColor(name);
 				tempIdentity->color = malloc(4);
 				strcpy(tempIdentity->color, "88F");
 				strcpy(&(tempIdentity->trip[0]), "abcdefghijklmnopqrst");
@@ -427,7 +427,7 @@ static void* poolFunc(void *arg){
 					if(sIdentity->identity != users->identity){
 						sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, sIdentity->identity->name, 0, sIdentity->identity->trip, 0, sIdentity->identity->color, 0, users->identity->name);
 						memcpy(&buffer[26 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color)], users->key, users->keySize);
-						sendToSocket(buffer, 26 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color) + sIdentity->keySize, sIdentity->identity->socketNode->fd);
+						sendToSocket(buffer, 25 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color) + sIdentity->keySize, users->identity->socketNode->fd);
 					}
 
 					users = bstNext(users);
@@ -469,14 +469,13 @@ static void* poolFunc(void *arg){
 
 
 				// Now we have to find the room/user they are trying to invite...
-				struct roomBST* room_node = bstSearch(room, strlen(room) + 1, (void*) rooms_root);
+				struct roomBST* room_node = bstSearch(room, strlen(room) + 1, (void*)rooms_root);
 				if(room_node == NULL){
 					sendToSocket("error\0Room not found!", 21, fds[this->fd_index].fd);
 					goto free_and_continue;
 				}
 					
-				//                                                           SHOULDN'T THIS BE +2 ?
-				struct roomIdentityBST* identity_node = bstSearch(room, strlen(name) + strlen(room) + 1, (void*) room_node->identities);
+				struct roomIdentityBST* identity_node = bstSearch(room, strlen(name) + strlen(room) + 2, (void*)room_node->identities);
 				if(identity_node == NULL){
 					sendToSocket("error\0User not found!", 21, fds[this->fd_index].fd);
 					goto free_and_continue;
@@ -487,7 +486,29 @@ static void* poolFunc(void *arg){
 
 				sendToSocket(buffer, 7 + strlen(to_room), identity_node->identity->socketNode->fd);
 
+			}else if(!strcmp("leave", msg)){
+				unsigned short index_length = strlen(&msg[6]);
 
+				if(len.length < 8 || (unsigned short)(7 + index_length) == len.length){
+					sendToSocket("error\0Invalid leave!", 20, fds[this->fd_index].fd);
+					goto free_and_continue;
+				}
+
+				index_length += strlen(&msg[index_length + 1]) + 2;
+
+				sprintf(buffer, "%i", this->fd_index);
+				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, sockets_root);
+
+				struct socketIdentityBST *socket_identity = bstSearch(&msg[6], index_length, this_socket_node->identities);
+				struct identityNode *identity_node = this_socket_node->identities->identity;
+				struct roomIdentityBST *room_identity = bstSearch(&msg[6], index_length, identity_node->roomNode->identities);
+
+				bstRemoveNode(socket_identity, (void**)&this_socket_node->identities);
+				bstRemoveNode(room_identity, (void**)&identity_node->roomNode->identities);
+
+				free(identity_node);
+
+				sendToSocket(msg, len.length, fds[this->fd_index].fd);
 			}else
 				// Else, probably someone trying to hack me
 				sendToSocket("error\0Unrecognized input!", 25, fds[this->fd_index].fd);
@@ -497,80 +518,6 @@ static void* poolFunc(void *arg){
 				free(msg);
 				msg = NULL;
 			}
-
-			// Code from legacy branch for handling invites/leaving. Here for easy reference
-/*
-				// If a user wants to leave a room
-				if(!strncmp("leave: ", msg, 7)){
-					if(msg + 7 == NULL)
-						continue;
-
-					struct identityBST* sIdentity = searchIdentity(activeSocket->identities, msg + 7);
-
-					if(sIdentity == NULL)
-						continue;
-
-					struct roomBST* rNode = sIdentity->identity->room;
-					struct identityBST* rIdentity = searchIdentity(rNode->identities, msg + 7);
-
-					removeIdentity(&rNode->identities, rIdentity);
-
-					if(rNode->identities == NULL)
-						removeRoom(rNode);
-					else{
-						char* bye;
-						bye = smalloc(25 + strlen(sIdentity->identity->name));
-						sprintf(bye, "{\"event\":\"bye\",\"user\":\"%s\"}", sIdentity->identity->name);
-						sendToRoom(bye, sIdentity->identity->room->room);
-
-						free(bye);
-					}
-
-					free(sIdentity->identity->color);
-					free(sIdentity->identity->name);
-					free(sIdentity->identity);
-
-					removeIdentity(&activeSocket->identities, sIdentity);
-
-					continue;
-				}
-
-				// Otherwise, if the payload starts with "chat: ", it's a normal message. Else, we disregard the packet
-				if(strncmp("chat: ", msg, 6))
-					continue;
-
-				char *id = msg + 6;
-				char *tmp = strstr(id, " ");
-
-				if(tmp == NULL)
-					continue;
-
-				tmp[0] = 0;
-
-				unsigned char offset = 7 + strlen(id);
-
-				tmp = smalloc(len - offset);
-				memcpy(tmp, &msg[offset], len - offset);
-				tmp[len - offset] = 0;
-
-				if(!strlen(tmp))
-					continue;
-
-				struct identityBST *identityNode = searchIdentity(activeSocket->identities, id);
-				if(identityNode == NULL)
-					continue;
-
-	//			urlStringChop(&tmp, 350);
-
-				char *b;
-				b = smalloc(strlen(tmp) + strlen(identityNode->identity->name) + 36);
-				sprintf(b, "{\"user\":\"%s\",\"event\":\"chat\",\"data\":\"%s\"}", identityNode->identity->name, tmp);
-				sendToRoom(b, identityNode->identity->room->room);
-
-				free(b);
-				free(tmp);
-			}
-	*/
 		}
 
 		// Set this thread's fd_index to -1 and then unlock the thread mutex
