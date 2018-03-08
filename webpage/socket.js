@@ -39,9 +39,9 @@ socket.onclose = function(e){
 }
 
 socket.onmessage = function(e){
-	console.log('message', e);
-
 	var datas = e.data.split("\u0000");
+
+	console.log(datas, e);
 
 	switch(datas[0]){
 		case 'chat':
@@ -104,10 +104,6 @@ socket.onmessage = function(e){
 			tab_span.addEventListener('click', tabClickFunc);
 
 			room_div.getElementsByClassName('room_name')[0].textContent = datas[1];
-		break;
-
-		case "invited":
-			console.log(e, datas);
 		break;
 
 		case "error":
