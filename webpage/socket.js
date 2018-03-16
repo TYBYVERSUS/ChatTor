@@ -73,6 +73,11 @@ socket.onmessage = function(e){
 			document.querySelector('[data-name="'+attrEncode(datas[4]+'\0'+datas[5])+'"]').parentNode.getElementsByClassName('userlist')[0].appendChild(li);
 		break;
 
+		case 'bye':
+			var li = document.querySelector('[data-name="'+attrEncode(datas[3]+'\0'+datas[4])+'"]').parentNode.querySelector('.userlist .'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))).parentNode;
+			li.parentNode.removeChild(li);
+		break;
+
 		case "joined":
 			document.getElementById('name').value = '';
 			document.getElementById('room').value = '';
@@ -106,6 +111,10 @@ socket.onmessage = function(e){
 			room_div.getElementsByClassName('room_name')[0].textContent = datas[1];
 		break;
 
+		case 'invite':
+			console.log('you got an invite. Woo', e, datas);
+		break;
+
 		case "error":
 			alert(datas[1]);
 		break;
@@ -120,14 +129,14 @@ window.onload = function(){
 
 		if(document.querySelector('#tabs > .selected.d_fault') !== null){
 			console.log('joining');
-			socket.send("join\0"+document.getElementById('room').value + "\0" + document.getElementById('name').value);
+			socket.send("join\0"+document.getElementById('room').value + "\0" + document.getElementById('name').value+'\0');
 		}else{
 			var input = document.querySelector('#rooms > .selected input');
 
 			if(!input.value.length)
 				return;
 
-			socket.send('chat\0'+decodeURIComponent(atob(input.dataset['name']))+'\0'+input.value);
+			socket.send('chat\0'+decodeURIComponent(atob(input.dataset['name']))+'\0'+input.value+'\0');
 			input.value = '';
 		}
 	});

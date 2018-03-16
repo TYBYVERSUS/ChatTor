@@ -15,51 +15,52 @@
 
 #define min(x, y) (x < y ? x : y)
 
+static const char* b64Table="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 // This is for setting websocket frame lengths that use more than one byte
-union websocket_frame_length{
+union websocketFrameLength{
 	uint64_t length;
 	unsigned char bytes[8];
 };
 
-struct thread_pool {
+struct threadPool {
 	pthread_t thread;
 	pthread_mutex_t mutex;
-	struct thread_pool *next;
+	struct threadPool *next;
 	int fd_index;
 };
 
-static const char* b64Table="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+// Mutexes for globals
+pthread_mutex_t pollFDsMutex, socketsRootMutex, roomsRootMutex;
 
-// Mostly config.txt options
-int listener_socket;
-unsigned char guest_suffix_min = 8,
-	guest_suffix_max = 16,
-	name_limit = 22,
-	ping_pong_heartbeat_seconds = 45,
-	ping_pong_response_seconds = 5,
-	room_suffix_min = 8,
-	room_suffix_max = 36,
-	room_name_limit = 40,
-	thread_count = 1;
+// config.txt options
+unsigned char guestSuffixMin = 8,
+	guestSuffixMax = 16,
+	nameLimit = 22,
+	pingPongHeartbeatSeconds = 45,
+	pingPongResponseSeconds = 5,
+	roomSuffixMin = 8,
+	roomSuffixMax = 36,
+	roomNameLimit = 4;
 
-unsigned short ping_pong_heartbeat_milliseconds = 0, ping_pong_response_milliseconds = 0, port = 8080;
-unsigned int name_seed;
-uint64_t max_msg_length = 1000;
+unsigned short pingPongHeartbeatMilliseconds = 0, pingPongResponseMilliseconds = 0;
+unsigned int nameSeed;
+uint64_t maxMsgLength = 1000;
 
-int fd_counter = 1, fds_length = 4096;
+// And poll stuff
+int fdCounter = 1, pollFDsLength = 512;
+struct pollfd* pollFDs;
 
-// Where the poll socket data is stored
-struct pollfd* fds;
-
-pthread_mutex_t fds_mutex, sockets_root_mutex, rooms_root_mutex, thread_setting_socket_mutex;
-pthread_t hk, sig;
-
+// bst.c declares the globals "socketsRoot" and "roomsRoot" as well as a few data structures
 #include "bst.c"
 #include "functions.c"
 #include "threads.c"
 
 // Initialize the threads, and then just kind of do nothing...
 int main(){
+	unsigned char thread_count = 1;
+	unsigned short port = 8080;
+
 	// Verify that there is a config file... I can auto-create one later
 	FILE *config = fopen("config.txt", "r+");
 	if(config == NULL)
@@ -81,46 +82,46 @@ int main(){
 				value++;
 
 			if(!strcmp(line, "max_message_length"))
-				max_msg_length = (uint64_t)strtoull(value, NULL, 10);
+				maxMsgLength = (uint64_t)strtoull(value, NULL, 10);
 
 			else if(!strcmp(line, "guest_name_random_min"))
-				guest_suffix_min = (unsigned char)atoi(value);
+				guestSuffixMin = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "guest_name_random_max"))
-				guest_suffix_max = (unsigned char)atoi(value);
+				guestSuffixMax = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "room_name_random_min"))
-				room_suffix_min = (unsigned char)atoi(value);
+				roomSuffixMin = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "room_name_random_max"))
-				room_suffix_max = (unsigned char)atoi(value);
+				roomSuffixMax = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "name_length_limit"))
-				name_limit = (unsigned char)atoi(value);
+				nameLimit = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "room_name_length_limit"))
-				room_name_limit = (unsigned char)atoi(value);
+				roomNameLimit = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "port"))
 				port = (unsigned short)atoi(value);
 
 			else if(!strcmp(line, "max_sockets"))
-				fds_length = (uint64_t)strtoull(value, NULL, 10);
+				pollFDsLength = (uint64_t)strtoull(value, NULL, 10);
 
 			else if(!strcmp(line, "threads"))
 				thread_count = (unsigned char)atoi(value);
 
 			else if(!strcmp(line, "ping_pong_heartbeat_seconds"))
-				ping_pong_heartbeat_seconds = (unsigned short)atoi(value);
+				pingPongHeartbeatSeconds = (unsigned short)atoi(value);
 
 			else if(!strcmp(line, "ping_pong_heartbeat_milliseconds"))
-				ping_pong_heartbeat_milliseconds = (unsigned short)atoi(value);
+				pingPongHeartbeatMilliseconds = (unsigned short)atoi(value);
 
 			else if(!strcmp(line, "ping_pong_response_seconds"))
-				ping_pong_response_seconds = (unsigned short)atoi(value);
+				pingPongResponseSeconds = (unsigned short)atoi(value);
 
 			else if(!strcmp(line, "ping_pong_response_milliseconds"))
-				ping_pong_response_milliseconds = (unsigned short)atoi(value);
+				pingPongResponseMilliseconds = (unsigned short)atoi(value);
 
 			else{
 				config_read_no_colon:
@@ -134,13 +135,15 @@ int main(){
 			line = NULL;
 		}
 
+		free(line);
 		fclose(config);
 	}
 
-	fds = calloc(fds_length, sizeof(struct pollfd));
+	pollFDs = calloc(pollFDsLength, sizeof(struct pollfd));
 
 	//Set up the listener socket
 	unsigned char val = 1;
+	int listener_socket;
 	struct sockaddr_in listener_socket_sockaddr = {0};
 	struct timespec timespec_seed;
 
@@ -157,23 +160,22 @@ int main(){
 		printf("Error binding the socket\n");
 		exit(1);
 	}
-	listen(listener_socket, 4);
 
+	listen(listener_socket, 4);
 	fcntl(listener_socket, F_SETFL, fcntl(listener_socket, F_GETFL) | O_ASYNC);
 
-	fds[0].fd = listener_socket;
-	fds[0].events = POLLIN;
+	pollFDs[0].fd = listener_socket;
+	pollFDs[0].events = POLLIN;
 
-	pthread_mutex_init(&fds_mutex, NULL);
-	pthread_mutex_init(&sockets_root_mutex, NULL);
-	pthread_mutex_init(&rooms_root_mutex, NULL);
-	pthread_mutex_init(&thread_setting_socket_mutex, NULL);
+	pthread_mutex_init(&pollFDsMutex, NULL);
+	pthread_mutex_init(&socketsRootMutex, NULL);
+	pthread_mutex_init(&roomsRootMutex, NULL);
 		
 	// Set the clock and the name seed
 	clock_gettime(CLOCK_REALTIME, &timespec_seed);
 
-	name_seed = ((unsigned int)clock() + (unsigned int)timespec_seed.tv_nsec) * 256 * rand();
-	srand(name_seed);
+	nameSeed = ((unsigned int)clock() + (unsigned int)timespec_seed.tv_nsec) * 256 * rand();
+	srand(nameSeed);
 
 	// Now we set up SIGIO for the signal thread...
 	fcntl(listener_socket, F_SETOWN, getpid());
@@ -189,7 +191,8 @@ int main(){
 	}
 
 	// ...and allocate memory for the threadpool early so we can pass the pointer to the signal thread...
-	struct thread_pool *thread = malloc(sizeof(struct thread_pool)), *first_thread;
+	pthread_t hk, sig;
+	struct threadPool *thread = malloc(sizeof(struct threadPool)), *first_thread;
 	first_thread = thread;
 
 	// ...and then actually create the signal handling thread...
@@ -228,7 +231,7 @@ int main(){
 		}
 
 		if(val++ < thread_count){
-			thread->next = malloc(sizeof(struct thread_pool));
+			thread->next = malloc(sizeof(struct threadPool));
 			thread = thread->next;
 		}else{
 			thread->next = first_thread;
@@ -246,6 +249,8 @@ int main(){
 		printf("Failed to detach house keeping thread...?\n");
 		exit(1);
 	}
+
+	// getpwnam and getgrnam instead of hardcoding IDs here. POSIX.1-2001
 
 	// Now drop to nobody privileges! Should make own user in perfect world, but I can deal with that later...
 	if(setgid(65534) != 0){

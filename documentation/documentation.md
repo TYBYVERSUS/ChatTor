@@ -6,7 +6,7 @@ I will attempt to explain the general flow of the program, and how the data stru
 ## Program flow
 
 1. Start websocket server
-    1. Allocate memory for `struct pollfd *fds`
+    1. Allocate memory for `struct pollfd *pollFDs`
     2. Create listener socket
     3. Set up signal handler for signal handler thread
     4. Create threads and mutexes
@@ -45,6 +45,7 @@ To server:
 From server (\u0000 is a NULL temrinator in JS):
   - `chat\u0000Speaker Username\u0000Speaker Tripcode\u0000Message\u0000Your Room\u0000Your Username`
   - `hi\u0000New User Name\u0000New User Tripcode\u0000New User Color\u0000Your Room\u0000Your Username`
+  - `bye\u0000User Name\u0000User Tripcode\u0000Your Room\u0000Your Username`
   - `joined\u0000Your room\u0000Your Username`
   - Rest are to come
 
@@ -58,7 +59,7 @@ Before I get into the structs, I need to define a few things:
 
 Now I will list the data structures and what they are for:
 
-  - `struct pollfd *fds` This holds all of the socket fds, which may be queried for activity using `poll()`
+  - `struct pollfd *pollFDs` This holds all of the socket fds, which may be queried for activity using `poll()`
   - `fd_index` Not globally declared, but used many times in local context. `fd_index` is used to get the actual socket fd from `fds`.
   - `struct socketBST` Each socket has an entry in this BST.
   - `struct roomBST` Each room has an entry in this BST. Identities should be BST as well as be navigable chronologically with eldest identity being `first`.

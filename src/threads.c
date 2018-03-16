@@ -2,11 +2,11 @@
 // This thread should handle PING/PONG and maybe other stuff
 static void* hkFunc(){
 //	struct timespec ping_pong_heartbeat_tv, ping_pong_response_tv;
-//	ping_pong_heartbeat_tv.tv_sec = ping_pong_heartbeat_seconds;
-//	ping_pong_heartbeat_tv.tv_nsec = ping_pong_heartbeat_milliseconds * 1000000;
+//	pingong_heartbeat_tv.tv_sec = pingPongHeartbeatSeconds;
+//	ping_pong_heartbeat_tv.tv_nsec = pingPongHeartbeatMilliseconds * 1000000;
 
-//	ping_pong_response_tv.tv_sec = ping_pong_response_seconds;
-//	ping_pong_response_tv.tv_nsec = ping_pong_response_milliseconds * 1000000;
+//	ping_pong_response_tv.tv_sec = pingPongResponseSeconds;
+//	ping_pong_response_tv.tv_nsec = pingPongResponseMilliseconds * 1000000;
 
 	for(;;)
 		pause();
@@ -15,12 +15,12 @@ static void* hkFunc(){
 }
 
 // A recursive function used in the signal handler to find the active socket
-int findActiveSocket(int offset, int length, struct thread_pool *thread){
-	if(poll(&fds[offset], length, 0) < 1)
+int findActiveSocket(int offset, int length, struct threadPool *thread){
+	if(poll(&pollFDs[offset], length, 0) < 1)
 		return -1;
 
 	if(length == 1){
-		struct thread_pool *tmp_thread = thread;
+		struct threadPool *tmp_thread = thread;
 		do{
 			if(tmp_thread->fd_index == offset)
 				return -1;
@@ -40,7 +40,7 @@ int findActiveSocket(int offset, int length, struct thread_pool *thread){
 
 // Signal thread. Used to catch SIGIO, find the active socket, and then pass it on to the first avialballe thread in the threadpool
 static void* sigFunc(void *arg){
-	struct thread_pool *thread = (struct thread_pool*)arg;
+	struct threadPool *thread = (struct threadPool*)arg;
 	sigset_t signal_set;
 	int caught_signal, fd_index;
 
@@ -59,10 +59,9 @@ static void* sigFunc(void *arg){
 
 		// In my opinion, this is mor readbale using goto than a loop
 		sig_func_do_loop:
-		pthread_mutex_lock(&fds_mutex);
-		fd_index = findActiveSocket(0, fds_length, thread);
-		pthread_mutex_unlock(&fds_mutex);
-
+		pthread_mutex_lock(&pollFDsMutex);
+		fd_index = findActiveSocket(0, pollFDsLength, thread);
+		pthread_mutex_unlock(&pollFDsMutex);
 
 		if(fd_index != -1){
 			printf("Found activity on fd_index %i\n", fd_index);
@@ -85,7 +84,7 @@ static void* poolFunc(void *arg){
 	char buffer[4096] = {0};
 	int caught_signal;
 
-	struct thread_pool *this = arg;
+	struct threadPool *this = arg;
 	sigset_t signal_set;
 
 	sigemptyset(&signal_set);
@@ -108,7 +107,7 @@ static void* poolFunc(void *arg){
 
 		// If the fd_index is 0, it's the listener socket that has activity, which means there's a new socket attempting to open a connection
 		if(!this->fd_index){
-			int new_socket = accept(listener_socket, NULL, NULL);
+			int new_socket = accept(pollFDs[0].fd, NULL, NULL);
 			if(new_socket == -1)
 				goto threadpool_done_unlock;
 
@@ -117,23 +116,23 @@ static void* poolFunc(void *arg){
 
 			recv(new_socket, buffer, 4095, 0);
 
-			// Adding the socket to fds
-			pthread_mutex_lock(&fds_mutex);
+			// Adding the socket to pollFDs
+			pthread_mutex_lock(&pollFDsMutex);
 
-			this->fd_index = fd_counter;
+			this->fd_index = fdCounter;
 
 			// Setting fd_counteir to the next open fd_index
-			while(fds[++fd_counter].fd != 0){
-				if(fd_counter >= fds_length){
+			while(pollFDs[++fdCounter].fd != 0){
+				if(fdCounter >= pollFDsLength){
 					printf("TOO MANY SOCKETS! Exiting now...\n");
 					exit(1);
 				}
 			}
 
-			fds[this->fd_index].fd = new_socket;
-			fds[this->fd_index].events = POLLIN;
+			pollFDs[this->fd_index].fd = new_socket;
+			pollFDs[this->fd_index].events = POLLIN;
 
-			pthread_mutex_unlock(&fds_mutex);
+			pthread_mutex_unlock(&pollFDsMutex);
 
 			// Now we need to read the buffer and do websocket stuff according to https://tools.ietf.org/html/rfc6455#section-1.3
 			char *wskey = strstr(buffer, "\r\nSec-WebSocket-Key: ");
@@ -194,26 +193,35 @@ static void* poolFunc(void *arg){
 				continue;
 			}
 
+			
 			// Insert socket "BST" node
+			struct socketBST* socket_node = malloc(sizeof(struct socketBST));
+
 			sprintf(buffer, "%i", this->fd_index);
+			socket_node->index_length = strlen(buffer) + 1;
+			socket_node->index = malloc(socket_node->index_length);
+			strcpy(socket_node->index, buffer);
 
+			socket_node->fd = new_socket;
 
-			struct socketBST *socket_node = bstMakeSocketBST(buffer, strlen(buffer)+1, NULL, new_socket);
+			pthread_mutex_init(&socket_node->identities_mutex, NULL);
+			socket_node->identities = NULL;
 
-			// &sockets_root_mutex was previously also sent to insert
-			bstInsert((void*)socket_node, (void**)&sockets_root);
+			pthread_mutex_lock(&socketsRootMutex);
+			bstInsert(socket_node, (void**)&socketsRoot);
+			pthread_mutex_unlock(&socketsRootMutex);
 
 			goto threadpool_done_unlock;
 		}
 
 		// Else, if it's not the listener socket that has activity, we handle it here: https://tools.ietf.org/html/rfc6455#section-5
-		while(poll(&fds[this->fd_index], 1, 0)){
+		while(poll(&pollFDs[this->fd_index], 1, 0)){
 			char mask[4];
-			union websocket_frame_length len;
+			union websocketFrameLength len;
 
 			ssize_t this_read_length, read_length = 0;
 			while(read_length < 2)
-				if((this_read_length = recv(fds[this->fd_index].fd, &buffer[read_length], 2 - read_length, 0)) > 0)
+				if((this_read_length = recv(pollFDs[this->fd_index].fd, &buffer[read_length], 2 - read_length, 0)) > 0)
 					read_length += this_read_length;
 				else{
 					close_socket(this->fd_index);
@@ -225,7 +233,7 @@ static void* poolFunc(void *arg){
 			//   FIN & op = 1          Mask set
 			if(buffer[0] != -127 || buffer[1] > -1){
 				// If ths socket is closed, it might be handled here? Test this please
-				while(recv(fds[this->fd_index].fd, buffer, 4096, 0) == 4096){}
+				while(recv(pollFDs[this->fd_index].fd, buffer, 4096, 0) == 4096){}
 				close_socket(this->fd_index);
 				goto threadpool_done_unlock;
 			}
@@ -235,7 +243,7 @@ static void* poolFunc(void *arg){
 			if(len.length == 127){
 				read_length = 0;
 				while(read_length < 8)
-					if((this_read_length = recv(fds[this->fd_index].fd, &buffer[read_length], 8 - read_length, 0)) > 0)
+					if((this_read_length = recv(pollFDs[this->fd_index].fd, &buffer[read_length], 8 - read_length, 0)) > 0)
 						read_length += this_read_length;
 					else{
 						close_socket(this->fd_index);
@@ -253,7 +261,7 @@ static void* poolFunc(void *arg){
 			}if(len.length == 126){
 				read_length = 0;
 				while(read_length < 2)
-					if((this_read_length = recv(fds[this->fd_index].fd, &buffer[read_length], 2 - read_length, 0)) > 0)
+					if((this_read_length = recv(pollFDs[this->fd_index].fd, &buffer[read_length], 2 - read_length, 0)) > 0)
 						read_length += this_read_length;
 					else{
 						close_socket(this->fd_index);
@@ -268,7 +276,7 @@ static void* poolFunc(void *arg){
 
 			read_length = 0;
 			while(read_length < 4)
-				if((this_read_length = recv(fds[this->fd_index].fd, &mask[read_length], 4 - read_length, 0)) > 0)
+				if((this_read_length = recv(pollFDs[this->fd_index].fd, &mask[read_length], 4 - read_length, 0)) > 0)
 					read_length += this_read_length;
 				else{
 					close_socket(this->fd_index);
@@ -280,7 +288,7 @@ static void* poolFunc(void *arg){
 
 			read_length = 0;
 			while((uint64_t)read_length < len.length)
-				if((this_read_length = recv(fds[this->fd_index].fd, &msg[read_length], len.length - read_length, 0)) > 0)
+				if((this_read_length = recv(pollFDs[this->fd_index].fd, &msg[read_length], len.length - read_length, 0)) > 0)
 					read_length += this_read_length;
 				else{
 					close_socket(this->fd_index);
@@ -304,20 +312,24 @@ static void* poolFunc(void *arg){
 				message = strchr(&msg[5], 0) + 1;
 				message = strchr(message, 0) + 1;
 
-				stringChop(&message, max_msg_length);
+				stringChop(&message, maxMsgLength);
 
 				sprintf(buffer, "%i", this->fd_index);
-				struct socketBST *sNode =  bstSearch(buffer, strlen(buffer) + 1, (void*) sockets_root);
-				struct socketIdentityBST *sIdentity = bstSearch(&msg[5], message - &msg[5], (void*) sNode->identities);
+				pthread_mutex_lock(&socketsRootMutex);
+				struct socketBST *s_node = bstSearch(buffer, strlen(buffer)+1, socketsRoot);
+				pthread_mutex_unlock(&socketsRootMutex);
+				pthread_mutex_lock(&s_node->identities_mutex);
+				struct socketIdentityBST *s_identity = bstSearch((void*)&msg[5], message - &msg[5], s_node->identities);
+				pthread_mutex_unlock(&s_node->identities_mutex);
 
-				if((struct bstNode*) sIdentity == NULL){
-					sendToSocket("error\0Invalid identity", 22, fds[this->fd_index].fd);
+				if(s_identity == NULL){
+					sendToSocket("error\0Invalid identity", 22, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
-				prepared_message = malloc(strlen(message) + strlen(sIdentity->identity->name) + 28);
-				sprintf(prepared_message, "chat%c%s%c%s%c%s", 0, sIdentity->identity->name, 0, sIdentity->identity->trip, 0, message);
-				sendToRoom(prepared_message, strlen(message) + strlen(sIdentity->identity->name) + 27, sIdentity->identity->roomNode);
+				prepared_message = malloc(strlen(message) + strlen(s_identity->identity->name) + 28);
+				sprintf(prepared_message, "chat%c%s%c%s%c%s", 0, s_identity->identity->name, 0, s_identity->identity->trip, 0, message);
+				sendToRoom(prepared_message, strlen(message) + strlen(s_identity->identity->name) + 27, s_identity->identity->room_node);
 				free(prepared_message);
 
 			}else if(!strcmp("join", msg)){
@@ -325,50 +337,63 @@ static void* poolFunc(void *arg){
 				char *room = &msg[5], *name, *tmp;
 
 				if(len.length < 7 || 6 + strlen(room) == len.length){
-					sendToSocket("error\0Invalid join!", 19, fds[this->fd_index].fd);
+					sendToSocket("error\0Invalid join!", 19, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
 				name = &room[strlen(room) + 1];
 
 				if(!strlen(name)){
-					unsigned char tmplen = random() % (guest_suffix_max - guest_suffix_min);
-					name = malloc(6 + guest_suffix_min + tmplen);
+					unsigned char tmplen = random() % (guestSuffixMax - guestSuffixMin);
+					name = malloc(6 + guestSuffixMin + tmplen);
 					strcpy(name, "Guest");
-					randomSuffix(&name, guest_suffix_min + tmplen);
+					randomSuffix(&name, guestSuffixMin + tmplen);
 				}else{
+					stringChop(&name, nameLimit);
 					tmp = malloc(strlen(name) + 1);
 					strcpy(tmp, name);
 					name = tmp;
 				}
 
-				stringChop(&name, name_limit);
-
 				if(!strlen(room)){
-					unsigned char tmplen = random() % (room_suffix_max - room_suffix_min);
-					room = malloc(5 + room_suffix_min + tmplen);
+					unsigned char tmplen = random() % (roomSuffixMax - roomSuffixMin);
+					room = malloc(5 + roomSuffixMin + tmplen);
 					strcpy(room, "Room");
-					randomSuffix(&room, room_suffix_min + tmplen);
+					randomSuffix(&room, roomSuffixMin + tmplen);
 				}else{
+					stringChop(&room, roomNameLimit);
 					tmp = malloc(strlen(room) + 1);
 					strcpy(tmp, room);
 					room = tmp;
 				}
 
-				stringChop(&room, room_name_limit);
-				struct roomBST *rNode = bstSearch(room, strlen(room) + 1, (void*) rooms_root);
+				pthread_mutex_lock(&roomsRootMutex);
+				struct roomBST *r_node = bstSearch(room, strlen(room) + 1, roomsRoot);
+				pthread_mutex_unlock(&roomsRootMutex);
 
-				if((struct bstNode*) rNode == NULL){
-					rNode = bstMakeRoomBST(room, strlen(room)+1, NULL);
+				if(r_node == NULL){
+					r_node = malloc(sizeof(struct roomBST));
+					r_node->index_length = strlen(room)+1;
+					r_node->index = malloc(r_node->index_length);
+					strcpy(r_node->index, room);
+
+					pthread_mutex_init(&r_node->identities_mutex, NULL);
+					r_node->identities = NULL;
+					r_node->first = NULL;
+					r_node->last = NULL;
 
 					// previously rooms_root_mutex was also sent to the function
-					bstInsert((void*) rNode, (void**)&rooms_root);
+					pthread_mutex_lock(&roomsRootMutex);
+					bstInsert(r_node, (void**)&roomsRoot);
+					pthread_mutex_unlock(&roomsRootMutex);
 				}else{
 					// Make sure the name isn't already being used in that room...
-					struct roomIdentityBST* tmp = bstSearch(name, strlen(name)+1, rNode->identities);
+					pthread_mutex_lock(&r_node->identities_mutex);
+					struct roomIdentityBST* tmp = bstSearch(name, strlen(name)+1, r_node->identities);
+					pthread_mutex_unlock(&r_node->identities_mutex);
 
 					if(tmp != NULL){
-						sendToSocket("error\0This username is already taken!", 37, fds[this->fd_index].fd);
+						sendToSocket("error\0This username is already taken!", 37, pollFDs[this->fd_index].fd);
 
 						free(room);
 						free(name);
@@ -376,62 +401,72 @@ static void* poolFunc(void *arg){
 					}
 				}
 
-				int tempKeySize = strlen(room) + strlen(name) + 2;
-				char* tempKey = malloc(tempKeySize);
-				sprintf(tempKey, "%s%c%s", room, 0, name);
+				struct socketIdentityBST *s_identity = malloc(sizeof(struct socketIdentityBST));
 
-				struct identityNode* tempIdentity = malloc(sizeof(struct identityNode));
-				tempIdentity->name = malloc(strlen(name)+1);
-				strcpy(tempIdentity->name, name);
-				// sIdentity->identity->color = getNameColor(name);
-				tempIdentity->color = malloc(4);
-				strcpy(tempIdentity->color, "88F");
-				strcpy(&(tempIdentity->trip[0]), "abcdefghijklmnopqrst");
+				s_identity->index_length = strlen(room) + strlen(name) + 2;
+				s_identity->index = malloc(s_identity->index_length);
+				sprintf(s_identity->index, "%s%c%s", room, 0, name);
+
+				// Let's just set up identityNode as an element of s_identity because it's already there
+				s_identity->identity = malloc(sizeof(struct identityNode));
+				s_identity->identity->name = malloc(strlen(name)+1);
+				strcpy(s_identity->identity->name, name);
+				// getNameColor(name) here eventually
+				s_identity->identity->color = malloc(4);
+				strcpy(s_identity->identity->color, "88F");
+				s_identity->identity->trip = malloc(21);
+				strcpy(s_identity->identity->trip, "abcdefghijklmnopqrst");
 
 				sprintf(buffer, "%i", this->fd_index);
+				pthread_mutex_lock(&socketsRootMutex);
+				s_identity->identity->socket_node = bstSearch(buffer, strlen(buffer)+1, socketsRoot);
+				pthread_mutex_unlock(&socketsRootMutex);
+				s_identity->identity->room_node = r_node;
 
-				tempIdentity->socketNode = bstSearch(buffer, strlen(buffer) + 1, (void*) sockets_root);
-				tempIdentity->roomNode = rNode;
+				struct roomIdentityBST *r_identity = malloc(sizeof(struct roomIdentityBST));
+				memcpy(r_identity, s_identity, ((sizeof(char*) * 5) + sizeof(unsigned int) + sizeof(enum rbColors)));
+				r_identity->next = NULL;
 
 				// NOTE: currently sending the same tempIdentity to both sIdentity and rIdentity
 				// When one or the other gets removed, tempIdentity will be freed and the pointer in the other will be broken
 				// Consider making one malloced copy for each.
-				struct socketIdentityBST *sIdentity = bstMakeSocketIdentityBST(tempKey, tempKeySize, tempIdentity);
-				struct roomIdentityBST *rIdentity   = bstMakeRoomIdentityBST(  tempKey, tempKeySize, tempIdentity);
 
-				if(rNode->identities == NULL){
-					rNode->first = rIdentity;
-					rNode->last = rNode->first;
+				if(r_node->identities == NULL){
+					r_node->first = r_identity;
+					r_node->last = r_node->first;
 				}else{
-					rNode->last->next = rIdentity;
-					rNode->last = rNode->last->next;
+					r_node->last->next = r_identity;
+					r_node->last = r_node->last->next;
 				}
 
-				// mutex previously also sent to function  &rNode->identities_mutex
-				bstInsert(rIdentity, (void**)&rNode->identities);
-				// mutex previously also sent to function  &sIdentity->identity->socketNode->identities_mutex
-				bstInsert(sIdentity, (void**)&sIdentity->identity->socketNode->identities);
+				pthread_mutex_lock(&r_node->identities_mutex);
+				bstInsert(r_identity, (void**)&r_node->identities);
+				pthread_mutex_unlock(&r_node->identities_mutex);
 
-				free(tempKey);
+				pthread_mutex_lock(&s_identity->identity->socket_node->identities_mutex);
+				bstInsert(s_identity, (void**)&s_identity->identity->socket_node->identities);
+				pthread_mutex_unlock(&s_identity->identity->socket_node->identities_mutex);
 
+				sprintf(buffer, "joined%c%s%c%s%c%s", 0, room, 0, name, 0, s_identity->identity->trip);
+				sendToSocket(buffer, 29 + strlen(name) + strlen(room), pollFDs[this->fd_index].fd);
 
-				sprintf(buffer, "joined%c%s%c%s%c%s", 0, room, 0, name, 0, sIdentity->identity->trip);
-				sendToSocket(buffer, 29 + strlen(name) + strlen(room), fds[this->fd_index].fd);
-
-				struct roomIdentityBST *users = tempIdentity->roomNode->first;
+				struct roomIdentityBST *users = r_node->first;
 				while(users != NULL){
-					sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, users->identity->name, 0, users->identity->trip, 0, users->identity->color, 0, sIdentity->key);
-					memcpy(&buffer[26 + strlen(users->identity->name) + strlen(users->identity->color)], sIdentity->key, sIdentity->keySize);
-					sendToSocket(buffer, 25 + strlen(users->identity->name) + strlen(users->identity->color) + sIdentity->keySize, fds[this->fd_index].fd);
+					sprintf(buffer, "hi%c%s%c%s%c%s", 0, users->identity->name, 0, users->identity->trip, 0, users->identity->color);
+					memcpy(&buffer[26 + strlen(users->identity->name) + strlen(users->identity->color)], s_identity->index, s_identity->index_length);
+					sendToSocket(buffer, 25 + strlen(users->identity->name) + strlen(users->identity->color) + s_identity->index_length, pollFDs[this->fd_index].fd);
 
-					if(sIdentity->identity != users->identity){
-						sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, sIdentity->identity->name, 0, sIdentity->identity->trip, 0, sIdentity->identity->color, 0, users->identity->name);
-						memcpy(&buffer[26 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color)], users->key, users->keySize);
-						sendToSocket(buffer, 25 + strlen(sIdentity->identity->name) + strlen(sIdentity->identity->color) + sIdentity->keySize, users->identity->socketNode->fd);
+					if(s_identity->identity != users->identity){
+						sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, s_identity->identity->name, 0, s_identity->identity->trip, 0, s_identity->identity->color, 0, users->identity->name);
+						memcpy(&buffer[26 + strlen(s_identity->identity->name) + strlen(s_identity->identity->color)], users->index, users->index_length);
+						sendToSocket(buffer, 25 + strlen(s_identity->identity->name) + strlen(s_identity->identity->color) + users->index_length, users->identity->socket_node->fd);
 					}
 
 					users = bstNext(users);
 				}
+
+				free(room);
+				free(name);
 
 			}else if(!strcmp("invite", msg)){
 				unsigned char valid = 1;
@@ -444,74 +479,91 @@ static void* poolFunc(void *arg){
 					valid = 0;
 
 				if(!valid){
-					sendToSocket("error\0Invalid invite!", 21, fds[this->fd_index].fd);
+					sendToSocket("error\0Invalid invite!", 21, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
 				to_room = &name[strlen(name) + 1];
 
 				if(!strcmp(room, to_room)){
-					sendToSocket("error\0Can't invite to current room!", 35, fds[this->fd_index].fd);
+					sendToSocket("error\0Can't invite to current room!", 35, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
 				// We need to verify that the room the other user is being invited to is a room that this current user is in
 
 				sprintf(buffer, "%i", this->fd_index);
-				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, sockets_root);
-				struct socketIdentityBST* socket_identity_tmp = bstSearch(to_room, strlen(to_room)+1, (void*) this_socket_node->identities);
+				pthread_mutex_lock(&socketsRootMutex);
+				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, socketsRoot);
+				pthread_mutex_unlock(&socketsRootMutex);
+
+				pthread_mutex_lock(&this_socket_node->identities_mutex);
+				struct socketIdentityBST* socket_identity_tmp = bstSearch(to_room, strlen(to_room)+1, this_socket_node->identities);
+				pthread_mutex_unlock(&this_socket_node->identities_mutex);
 
 
 				if(socket_identity_tmp == NULL){
-					sendToSocket("error\0Invalid room!", 19, fds[this->fd_index].fd);
+					sendToSocket("error\0Invalid room!", 19, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
 
 				// Now we have to find the room/user they are trying to invite...
-				struct roomBST* room_node = bstSearch(room, strlen(room) + 1, (void*)rooms_root);
+				pthread_mutex_lock(&roomsRootMutex);
+				struct roomBST* room_node = bstSearch(room, strlen(room) + 1, roomsRoot);
+				pthread_mutex_unlock(&roomsRootMutex);
 				if(room_node == NULL){
-					sendToSocket("error\0Room not found!", 21, fds[this->fd_index].fd);
+					sendToSocket("error\0Room not found!", 21, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
-					
-				struct roomIdentityBST* identity_node = bstSearch(room, strlen(name) + strlen(room) + 2, (void*)room_node->identities);
+
+				pthread_mutex_lock(&room_node->identities_mutex);
+				struct roomIdentityBST* identity_node = bstSearch(room, strlen(name) + strlen(room) + 2, room_node->identities);
+				pthread_mutex_unlock(&room_node->identities_mutex);
 				if(identity_node == NULL){
-					sendToSocket("error\0User not found!", 21, fds[this->fd_index].fd);
+					sendToSocket("error\0User not found!", 21, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
 				// Then get the socket number and send the invite!
 				sprintf(buffer, "invite%c%s", 0, to_room);
 
-				sendToSocket(buffer, 7 + strlen(to_room), identity_node->identity->socketNode->fd);
+				sendToSocket(buffer, 7 + strlen(to_room), identity_node->identity->socket_node->fd);
 
 			}else if(!strcmp("leave", msg)){
 				unsigned short index_length = strlen(&msg[6]);
 
 				if(len.length < 8 || (unsigned short)(7 + index_length) == len.length){
-					sendToSocket("error\0Invalid leave!", 20, fds[this->fd_index].fd);
+					sendToSocket("error\0Invalid leave!", 20, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
 				}
 
 				index_length += strlen(&msg[index_length + 1]) + 2;
 
 				sprintf(buffer, "%i", this->fd_index);
-				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, sockets_root);
+				pthread_mutex_lock(&socketsRootMutex);
+				struct socketBST* this_socket_node = bstSearch(buffer, strlen(buffer)+1, socketsRoot);
+				pthread_mutex_unlock(&socketsRootMutex);
 
+				pthread_mutex_lock(&this_socket_node->identities_mutex);
 				struct socketIdentityBST *socket_identity = bstSearch(&msg[6], index_length, this_socket_node->identities);
+				pthread_mutex_unlock(&this_socket_node->identities_mutex);
+
 				struct identityNode *identity_node = this_socket_node->identities->identity;
-				struct roomIdentityBST *room_identity = bstSearch(&msg[6], index_length, identity_node->roomNode->identities);
+
+				pthread_mutex_lock(&identity_node->room_node->identities_mutex);
+				struct roomIdentityBST *room_identity = bstSearch(&msg[6], index_length, identity_node->room_node->identities);
+				pthread_mutex_unlock(&identity_node->room_node->identities_mutex);
 
 				bstRemoveNode(socket_identity, (void**)&this_socket_node->identities);
-				bstRemoveNode(room_identity, (void**)&identity_node->roomNode->identities);
+				bstRemoveNode(room_identity, (void**)&identity_node->room_node->identities);
 
 				free(identity_node);
 
-				sendToSocket(msg, len.length, fds[this->fd_index].fd);
+				sendToSocket(msg, len.length, pollFDs[this->fd_index].fd);
 			}else
 				// Else, probably someone trying to hack me
-				sendToSocket("error\0Unrecognized input!", 25, fds[this->fd_index].fd);
+				sendToSocket("error\0Unrecognized input!", 25, pollFDs[this->fd_index].fd);
 
 			free_and_continue:
 			if(msg != NULL){

@@ -3,6 +3,7 @@ I might update this periodically when things get done or I think of new things t
 Top Priority:
 
 Websocket Server (C):
+ - Make separate "read" and "modify" mutexes for data to make things slightly more efficient?
  - Add feature for users to change their names without leaving and re-entering
  - Figure out how to implement a secure trip-code feature in a way that can't be used to DoS me
  - Figure out how to set custom colors for specific username/trip-code combinations in a way that is easy to edit (doesn't require recompiling)
@@ -37,7 +38,7 @@ Website (HTML/JS/CSS):
 Normal Priority:
 
 Websocket Server (C):
- - Add housekeeping functions to the housekeeping thread (PING/PONG, rebalancing trees, etc)
+ - Add housekeeping functions to the housekeeping thread (PING/PONG, etc)
  - Possibly convert hardcoded if/else ladder in while(poll()) loop in threads.c into a BST that reads functions from module .o files at start up?
  - Possibly create a module to create an admin console accessible on the server to perform administrative tasks (kick users, lock rooms, etc)?
  - Useful stuff I can't think of at this exact moment?
