@@ -9,21 +9,31 @@ function tabClickFunc(e){
 	document.getElementsByClassName('selected')[0].classList.remove('selected');
 
 	var tabs = document.getElementById('tabs').children;
+	var tab = document.getElementById('tabs').firstElementChild;
+	var room = document.getElementById('rooms').firstElementChild;
 
 	for(var i=0; i<tabs.length; i++)
 		if(tabs[i] === this){
-			document.getElementById('rooms').children[i].classList.add('selected');
-			this.classList.add('selected');
-
-			return;
+			tab = this;
+			room = document.getElementById('rooms').children[i];
+			break;
 		}
 
-	document.getElementById('tabs').firstElementChild.classList.add('selected');
-	document.getElementById('rooms').firstElementChild.classList.add('selected');
+	tab.classList.remove('new_message');
+
+	tab.classList.add('selected');
+	room.classList.add('selected');
 }
 
 function attrEncode(str){
 	return btoa(encodeURIComponent(str));
+}
+
+function cleanupMessages(div){
+	div.scrollTop = div.scrollHeight;
+
+	while(div.children.length > 100)
+		div.removeChild(div.firstElementChild);
 }
 
 socket.onopen = function(e){
@@ -45,6 +55,10 @@ socket.onmessage = function(e){
 
 	switch(datas[0]){
 		case 'chat':
+			var container = document.querySelector('[data-name="'+attrEncode(datas[4]+'\0'+datas[5])+'"]').parentNode;
+			var messages = container.getElementsByClassName('messages')[0];
+			var tab = document.getElementById('tabs').children[[...container.parentNode.children].indexOf(container)];
+
 			var div = document.createElement('div');
 			var nameSpan = document.createElement('span');
 			var message = document.createTextNode(': '+datas[3]);
@@ -54,10 +68,17 @@ socket.onmessage = function(e){
 			nameSpan.textContent = datas[1];
 			nameSpan.className = attrEncode(datas[1]+'\0'+datas[2]);
 
+			if(container.firstElementChild.children.length !== 0 && nameSpan.className !== container.firstElementChild.lastElementChild.children[1].className)
+				div.className = 'new_speaker'
+
 			div.appendChild(nameSpan);
 			div.appendChild(message);
 
-			document.querySelector('[data-name="'+attrEncode(datas[4]+'\0'+datas[5])+'"]').parentNode.getElementsByClassName('messages')[0].appendChild(div);
+			messages.appendChild(div);
+			cleanupMessages(messages);
+
+			if(!tab.classList.contains('selected'))
+				tab.classList.add('new_message');
 		break;
 
 		case 'hi':
@@ -121,6 +142,8 @@ socket.onmessage = function(e){
 
 		default:
 	}
+
+	
 }
 
 window.onload = function(){

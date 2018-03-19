@@ -100,7 +100,11 @@ input[type="text"]:not([disabled]):focus{
 	color: #FFF;
 }
 
-#tabs > span.new_message,
+#tabs > span.new_message{
+	border-color: #0F0;
+	color: #0F0;
+}
+
 #tabs > span > span,
 #rooms .greentext{
 	color: #5F5;
@@ -158,8 +162,8 @@ input[type="text"]:not([disabled]):focus{
 	margin-bottom: 7px;
 }
 
-.last{
-	margin-bottom: 15px;
+.new_speaker{
+	margin-top: 8px;
 }
 
 .info{

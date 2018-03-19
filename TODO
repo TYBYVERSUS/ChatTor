@@ -20,7 +20,6 @@ Website (HTML/JS/CSS):
    * Notification sound when something happens (disabled by default, please use something free as in freedom) (possibly different sounds for different things?)
    * Option to auto-scroll chat messages
    * Option to toggle "last read" line (enabled by default)
- - Start deleting chat logs after 500 messages/notifications
  - Add a "last read" line showing the users what the last message was before they changed tabs
  - Add green text (Messages like ">Message" will appear as green. The color code is still probably in the CSS)
  - Create a UI mechanism for handling recieved invites (New + tab that is yellow?). Should not create new tabs for duplicate invites
