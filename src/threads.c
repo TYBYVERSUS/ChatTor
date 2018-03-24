@@ -388,8 +388,10 @@ static void* poolFunc(void *arg){
 					pthread_mutex_unlock(&roomsRootMutex);
 				}else{
 					// Make sure the name isn't already being used in that room...
+					sprintf(buffer, "%s%c%s", room, 0, name);
+
 					pthread_mutex_lock(&r_node->identities_mutex);
-					struct roomIdentityBST* tmp = bstSearch(name, strlen(name)+1, r_node->identities);
+					struct roomIdentityBST* tmp = bstSearch(buffer, strlen(name)+strlen(room)+2, r_node->identities);
 					pthread_mutex_unlock(&r_node->identities_mutex);
 
 					if(tmp != NULL){
@@ -456,7 +458,7 @@ static void* poolFunc(void *arg){
 					memcpy(&buffer[26 + strlen(users->identity->name) + strlen(users->identity->color)], s_identity->index, s_identity->index_length);
 					sendToSocket(buffer, 25 + strlen(users->identity->name) + strlen(users->identity->color) + s_identity->index_length, pollFDs[this->fd_index].fd);
 
-					if(s_identity->identity != users->identity){
+					if(r_identity != users){
 						sprintf(buffer, "hi%c%s%c%s%c%s%c%s", 0, s_identity->identity->name, 0, s_identity->identity->trip, 0, s_identity->identity->color, 0, users->identity->name);
 						memcpy(&buffer[26 + strlen(s_identity->identity->name) + strlen(s_identity->identity->color)], users->index, users->index_length);
 						sendToSocket(buffer, 25 + strlen(s_identity->identity->name) + strlen(s_identity->identity->color) + users->index_length, users->identity->socket_node->fd);

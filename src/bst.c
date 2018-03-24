@@ -341,7 +341,7 @@ void bstInsert(void* new_node, void** tree_root){
 
 	// Cleanup to ensure n height
 	if(node->parent != NULL && node->parent->parent != NULL)
-		while(node->parent->color == bstRed){
+		while(node->parent != NULL && node->parent->color == bstRed){
 			if(node->parent == node->parent->parent->left){
 				uncle = node->parent->parent->right;
 				if(uncle == NULL)
