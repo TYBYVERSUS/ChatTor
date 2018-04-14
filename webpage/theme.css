@@ -54,6 +54,7 @@ input[type="text"][disabled]{
 	border-color: #222;
 }
 
+#rooms .option_arrow:hover,
 input[type="text"]:not([disabled]):hover,
 input[type="text"]:not([disabled]):focus{
 	border-color: #5F5;
@@ -138,17 +139,46 @@ input[type="text"]:not([disabled]):focus{
 	width: 100%;
 }
 
-#rooms .options{
-	border: 1px solid #FFF;
-	border-top-width: 0;
-	display: none;
-	font-size: 12px;
-	line-height: 10px;
-	padding: 15px;
+#rooms .option_arrow{
+	font-size: 8px;
+	font-weight: 700;
+	text-align: center;
+	margin: 0 auto;
 }
 
-#rooms .options button{
-	padding: 0 2px;
+#rooms .option_arrow:not(.open){
+	border: 2px solid #FFF;
+	border-radius: 7px;
+	cursor: pointer;
+	padding: 2px 0;
+	width: 25px;
+}
+
+#rooms .option_arrow.open{
+	padding: 4px 0;
+}
+
+#rooms .option_arrow:not(.open) .options{
+	display: none;
+}
+
+#rooms .options{
+	display: block;
+	font-size: 14px;
+	font-weight: normal;
+	padding: 5px 10px;
+	text-align: left;
+}
+
+#rooms .options > *:nth-child(5){
+	font-size: 14px;
+	margin-top: 1px;
+	width: 100px;
+}
+
+#rooms .options > *:nth-child(2),
+#rooms .options > *:nth-child(6){
+	float: right;
 }
 
 .messages{
@@ -178,7 +208,13 @@ input[type="text"]:not([disabled]):focus{
 .room_name{
 	font-size: 16px;
 	font-weight: 700;
+	margin: 0 5px;
+	padding-bottom: 2px;
 	text-align: center;
+}
+
+.room_name{
+
 }
 
 .timestamp{
@@ -209,8 +245,40 @@ input[type="text"]:not([disabled]):focus{
 	margin-bottom: 7px;
 }
 
-.userlist > li:first-child > span,
-.userlist > li:first-child + li > span,
-.userlist > li:first-child + li + li > span{
+.userlist > li:first-child > div,
+.userlist > li:first-child + li > div,
+.userlist > li:first-child + li + li > div{
 	font-weight: normal;
+}
+
+.userlist > li > div{
+	margin-left: -40px;
+	padding-left: 40px;
+}
+
+.userlist > li:not(.open) > div:first-child{
+	cursor: pointer;
+}
+
+.userlist > li > div + div{
+	color: #FFF;
+}
+
+.userlist > li:not(.open) > div + div{
+	display: none;
+}
+
+.userlist > li > div + div > div{
+	/* For now, I don't support trip codes, so I'll hide this field. */
+	display: none;
+	margin: 5px 0 0 5px;
+}
+
+.userlist > li select{
+	background: transparent;
+	border: 2px solid #FFF;
+	border-radius: 7px;
+	color: #FFF;
+	margin-top: 5px;
+	padding: 1px 2px;
 }

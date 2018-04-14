@@ -67,6 +67,8 @@ void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 		each = each->left;
 
 	while(each != NULL){
+		printf("each: %p %p %p\n", each, each->left, each->right);
+
 		union websocketFrameLength len;
 		unsigned char offset;
 		char *encoded;
@@ -182,12 +184,14 @@ void close_socket(int fd_index){
 }
 
 // A function for adding a random suffix to a string (b64 charset without + and /).
-void randomSuffix(char **rand, unsigned long len){
-	unsigned long c, prelen = strlen(*rand);
+void randomSuffix(char **str, unsigned long len){
+	unsigned long c, prelen = strlen(*str);
 
+	pthread_mutex_lock(&randMutex);
 	for(c = 0; c < len; c++)
-		(*rand)[prelen+c] = b64Table[random() % 62];
+		(*str)[prelen+c] = b64Table[rand() % 62];
+	pthread_mutex_unlock(&randMutex);
 
-	(*rand)[prelen+len] = 0;
+	(*str)[prelen+len] = 0;
 }
 

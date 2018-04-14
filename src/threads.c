@@ -1,4 +1,3 @@
-
 // This thread should handle PING/PONG and maybe other stuff
 static void* hkFunc(){
 //	struct timespec ping_pong_heartbeat_tv, ping_pong_response_tv;
@@ -344,7 +343,9 @@ static void* poolFunc(void *arg){
 				name = &room[strlen(room) + 1];
 
 				if(!strlen(name)){
-					unsigned char tmplen = random() % (guestSuffixMax - guestSuffixMin);
+					pthread_mutex_lock(&randMutex);
+					unsigned char tmplen = rand() % (guestSuffixMax - guestSuffixMin);
+					pthread_mutex_unlock(&randMutex);
 					name = malloc(6 + guestSuffixMin + tmplen);
 					strcpy(name, "Guest");
 					randomSuffix(&name, guestSuffixMin + tmplen);
@@ -356,7 +357,9 @@ static void* poolFunc(void *arg){
 				}
 
 				if(!strlen(room)){
-					unsigned char tmplen = random() % (roomSuffixMax - roomSuffixMin);
+					pthread_mutex_lock(&randMutex);
+					unsigned char tmplen = rand() % (roomSuffixMax - roomSuffixMin);
+					pthread_mutex_unlock(&randMutex);
 					room = malloc(5 + roomSuffixMin + tmplen);
 					strcpy(room, "Room");
 					randomSuffix(&room, roomSuffixMin + tmplen);
@@ -404,18 +407,35 @@ static void* poolFunc(void *arg){
 				}
 
 				struct socketIdentityBST *s_identity = malloc(sizeof(struct socketIdentityBST));
+				s_identity->identity = malloc(sizeof(struct identityNode));
+
+				// Generate name color
+				unsigned int seed = colorSeed;
+				unsigned short i;
+
+				for(i=0; i<strlen(name); i++)
+					seed *= (unsigned char)name[i] - i;
+
+				printf("%u\n", seed);
+
+				pthread_mutex_lock(&randMutex);
+				srand(seed);
+				s_identity->identity->color = malloc(7);
+				sprintf(s_identity->identity->color, "%X", rand()%191 + 64 + (rand()%191 + 64) * 0x100 + (rand()%191 + 64) * 0x10000);
+
+				struct timespec timespecSeed;
+				clock_gettime(CLOCK_REALTIME, &timespecSeed);
+
+				srand(((unsigned int)clock() + (unsigned int)timespecSeed.tv_nsec) * colorSeed);
+				pthread_mutex_unlock(&randMutex);
 
 				s_identity->index_length = strlen(room) + strlen(name) + 2;
 				s_identity->index = malloc(s_identity->index_length);
 				sprintf(s_identity->index, "%s%c%s", room, 0, name);
 
 				// Let's just set up identityNode as an element of s_identity because it's already there
-				s_identity->identity = malloc(sizeof(struct identityNode));
 				s_identity->identity->name = malloc(strlen(name)+1);
 				strcpy(s_identity->identity->name, name);
-				// getNameColor(name) here eventually
-				s_identity->identity->color = malloc(4);
-				strcpy(s_identity->identity->color, "88F");
 				s_identity->identity->trip = malloc(21);
 				strcpy(s_identity->identity->trip, "abcdefghijklmnopqrst");
 
@@ -503,7 +523,6 @@ static void* poolFunc(void *arg){
 				struct socketIdentityBST* socket_identity_tmp = bstSearch(to_room, strlen(to_room)+1, this_socket_node->identities);
 				pthread_mutex_unlock(&this_socket_node->identities_mutex);
 
-
 				if(socket_identity_tmp == NULL){
 					sendToSocket("error\0Invalid room!", 19, pollFDs[this->fd_index].fd);
 					goto free_and_continue;
@@ -557,12 +576,25 @@ static void* poolFunc(void *arg){
 				struct roomIdentityBST *room_identity = bstSearch(&msg[6], index_length, identity_node->room_node->identities);
 				pthread_mutex_unlock(&identity_node->room_node->identities_mutex);
 
+				if(room_identity == identity_node->room_node->first)
+					identity_node->room_node->first = identity_node->room_node->first->next;
+				else{
+				}
+
 				bstRemoveNode(socket_identity, (void**)&this_socket_node->identities);
 				bstRemoveNode(room_identity, (void**)&identity_node->room_node->identities);
 
-				free(identity_node);
-
 				sendToSocket(msg, len.length, pollFDs[this->fd_index].fd);
+
+				char *buffer = malloc(6 + strlen(identity_node->name) + strlen(identity_node->trip));
+				sprintf(buffer, "bye%c%s%c%s", 0, identity_node->name, 0, identity_node->trip);
+				sendToRoom(buffer, 5 + strlen(identity_node->name) + strlen(identity_node->trip), identity_node->room_node);
+
+				free(buffer);
+				free(identity_node->name);
+				free(identity_node->color);
+				free(identity_node->trip);
+				free(identity_node);
 			}else
 				// Else, probably someone trying to hack me
 				sendToSocket("error\0Unrecognized input!", 25, pollFDs[this->fd_index].fd);

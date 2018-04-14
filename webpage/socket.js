@@ -1,6 +1,37 @@
 //var socket = new WebSocket('ws://'+window.location.host+':8080');
 var socket = new WebSocket('ws://127.0.0.1:8080');
 
+var browserFocused = true;
+var title = document.title;
+var unreadMessages = 0;
+
+if((new Audio).canPlayType('audio/ogg; codecs=vorbis') !== 'no')
+	var audio = new Audio(window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')+1)+'notification.ogg');
+else if((new Audio).canPlayType('audio/mpeg') !== 'no')
+	var audio = new Audio(window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')+1)+'notification.mp3');
+
+if(audio)
+	audio.volume = 0.5;
+
+window.onclick = function(){
+	var elem;
+	while((elem = document.getElementsByClassName('open')[0]) !== undefined)
+		elem.classList.remove('open');
+}
+
+window.onfocus = function(){
+	browserFocused = true;
+	unreadMessages = 0;
+
+	if(document.title !== title && socket.readyState === 1){
+		document.title = title;
+	}
+}
+
+window.onblur = function(){
+	browserFocused = false;
+}
+
 function tabClickFunc(e){
 	if(this.classList.contains('selected'))
 		return;
@@ -30,28 +61,30 @@ function attrEncode(str){
 }
 
 function cleanupMessages(div){
-	div.scrollTop = div.scrollHeight;
+	var sH = div.scrollHeight;
 
 	while(div.children.length > 100)
 		div.removeChild(div.firstElementChild);
+
+	if(div.parentNode.getElementsByClassName('options')[0].children[8].firstElementChild.checked)
+		div.scrollTop = sH;
+	else if(div.children.length === 100)
+		div.scrollTop -= sH - div.scrollHeight;
+
+	if(audio && div.parentNode.getElementsByClassName('options')[0].children[10].firstElementChild.checked)
+		audio.play();
 }
 
 socket.onopen = function(e){
-	console.log("opened!", e);
-
 	document.querySelector('button[name="join"]').removeAttribute('disabled');
 }
 
 socket.onclose = function(e){
-	console.log("closed!", e);
-
 	document.querySelector('button[name="join"]').setAttribute('disabled', 'disabled');
 }
 
 socket.onmessage = function(e){
 	var datas = e.data.split("\u0000");
-
-	console.log(datas, e);
 
 	switch(datas[0]){
 		case 'chat':
@@ -84,14 +117,36 @@ socket.onmessage = function(e){
 		case 'hi':
 			document.getElementById('dynamic_style_sheet').sheet.insertRule('.'+(attrEncode(datas[1]+'\0'+datas[2]).replace(/=/g, '\\=').replace(/\+/g, '\\+'))+'{color:#'+datas[3]+';}');
 
-			var span = document.createElement('span');
-			span.textContent = datas[1];
-			span.className = attrEncode(datas[1]+'\0'+datas[2]);
+			var div = document.createElement('div');
+			div.textContent = datas[1];
+			div.className = attrEncode(datas[1]+'\0'+datas[2]);
 
 			var li = document.createElement('li');
-			li.appendChild(span);
+			li.appendChild(div);
+
+			div = document.createElement('div');
+			div.innerHTML = '<div>Tripcode Here</div><select><option value="">Invite To</option></select>';
+			li.appendChild(div);
 
 			document.querySelector('[data-name="'+attrEncode(datas[4]+'\0'+datas[5])+'"]').parentNode.getElementsByClassName('userlist')[0].appendChild(li);
+			li.addEventListener('click', function(e){
+				this.classList.add('open');
+				e.stopPropagation();
+			});
+		break;
+
+		case 'leave':
+			var div = document.querySelector('[data-name="'+attrEncode(datas[1]+'\0'+datas[2])+'"]').parentNode;
+			var index = [...div.parentNode.children].indexOf(div);
+
+			var tabs = document.getElementById('tabs');
+			var rooms = div.parentNode;
+
+			tabs.removeChild(tabs.children[index]);
+			rooms.removeChild(div);
+
+			tabs.children[0].classList.add('selected');
+			rooms.children[0].classList.add('selected');
 		break;
 
 		case 'bye':
@@ -111,6 +166,15 @@ socket.onmessage = function(e){
 				'</div>'+
 				'<div class="info_box">'+
 					'<div class="room_name"></div>'+
+					'<div class="option_arrow">V'+
+						'<div class="options">'+
+							'<button>Clear Chat</button><button>Leave Room</button><br /><br />'+
+							'<input type="text" placeholder="(reset)" /><button>Name Tab</button><br /><br />'+
+							'<label><input type="checkbox" checked="checked" />Auto Scroll</label><br />'+
+							'<label><input type="checkbox" />Message Sound</label><br />'+
+							'<label><input type="checkbox" />Notification Messages</label>'+
+						'</div>'+
+					'</div>'+
 					'<ol class="userlist"></ol>'+
 				'</div>'+
 				'<input type="text" />';
@@ -129,6 +193,25 @@ socket.onmessage = function(e){
 
 			tab_span.addEventListener('click', tabClickFunc);
 
+			room_div.getElementsByClassName('option_arrow')[0].addEventListener('click', function(e){
+				e.stopPropagation();
+				this.classList.add('open');
+			});
+
+			var options = room_div.getElementsByClassName('options')[0];
+			options.children[0].addEventListener('click', function(){ room_div.getElementsByClassName('messages')[0].innerHTML = ''; });
+			options.children[1].addEventListener('click', function(){ socket.send('leave\0'+decodeURIComponent(atob(room_div.lastElementChild.dataset['name']))); });
+
+			options.children[5].addEventListener('click', function(){
+				if(options.children[4].value === '')
+					document.getElementById('tabs').children[[...room_div.parentNode.children].indexOf(room_div)].textContent = room_div.getElementsByClassName('room_name')[0].textContent;
+
+				else{
+					document.getElementById('tabs').children[[...room_div.parentNode.children].indexOf(room_div)].textContent = options.children[4].value;
+					options.children[4].value = '';
+				}
+			});
+
 			room_div.getElementsByClassName('room_name')[0].textContent = datas[1];
 		break;
 
@@ -142,20 +225,17 @@ socket.onmessage = function(e){
 
 		default:
 	}
-
-	
 }
 
 window.onload = function(){
 	document.getElementById('rooms').addEventListener('submit', function(e){
 		e.preventDefault();
 
-		if(document.querySelector('#tabs > .selected.d_fault') !== null){
-			console.log('joining');
+		if(document.querySelector('#tabs > .selected.d_fault') !== null)
 			socket.send("join\0"+document.getElementById('room').value + "\0" + document.getElementById('name').value+'\0');
-		}else{
-			var input = document.querySelector('#rooms > .selected input');
 
+		else{
+			var input = document.querySelector('#rooms > .selected input[type="text"]:last-child');
 			if(!input.value.length)
 				return;
 

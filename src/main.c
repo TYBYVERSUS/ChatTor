@@ -31,7 +31,7 @@ struct threadPool {
 };
 
 // Mutexes for globals
-pthread_mutex_t pollFDsMutex, socketsRootMutex, roomsRootMutex;
+pthread_mutex_t pollFDsMutex, randMutex, roomsRootMutex, socketsRootMutex;
 
 // config.txt options
 unsigned char guestSuffixMin = 8,
@@ -44,7 +44,7 @@ unsigned char guestSuffixMin = 8,
 	roomNameLimit = 4;
 
 unsigned short pingPongHeartbeatMilliseconds = 0, pingPongResponseMilliseconds = 0;
-unsigned int nameSeed;
+unsigned int colorSeed;
 uint64_t maxMsgLength = 1000;
 
 // And poll stuff
@@ -168,14 +168,15 @@ int main(){
 	pollFDs[0].events = POLLIN;
 
 	pthread_mutex_init(&pollFDsMutex, NULL);
-	pthread_mutex_init(&socketsRootMutex, NULL);
+	pthread_mutex_init(&randMutex, NULL);
 	pthread_mutex_init(&roomsRootMutex, NULL);
+	pthread_mutex_init(&socketsRootMutex, NULL);
 		
 	// Set the clock and the name seed
 	clock_gettime(CLOCK_REALTIME, &timespec_seed);
 
-	nameSeed = ((unsigned int)clock() + (unsigned int)timespec_seed.tv_nsec) * 256 * rand();
-	srand(nameSeed);
+	colorSeed = ((unsigned int)clock() + (unsigned int)timespec_seed.tv_nsec) * 256 * rand();
+	srand(colorSeed);
 
 	// Now we set up SIGIO for the signal thread...
 	fcntl(listener_socket, F_SETOWN, getpid());
