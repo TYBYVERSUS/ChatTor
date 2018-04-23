@@ -227,8 +227,6 @@ static void* poolFunc(void *arg){
 					goto threadpool_done_unlock;
 				}
 
-			printf("First 2: %hhu %hhu\n", (unsigned char)buffer[0], (unsigned char)buffer[1]);
-
 			//   FIN & op = 1          Mask set
 			if(buffer[0] != -127 || buffer[1] > -1){
 				// If ths socket is closed, it might be handled here? Test this please
@@ -238,7 +236,6 @@ static void* poolFunc(void *arg){
 			}
 
 			len.length = ((unsigned char)buffer[1]) % 128;
-			printf("First length: %"PRIu64"\n", len.length);
 			if(len.length == 127){
 				read_length = 0;
 				while(read_length < 8)
@@ -271,8 +268,6 @@ static void* poolFunc(void *arg){
 				len.bytes[1] = (unsigned char)buffer[0];
 			}
 
-			printf("Final length: %"PRIu64"\n", len.length);
-
 			read_length = 0;
 			while(read_length < 4)
 				if((this_read_length = recv(pollFDs[this->fd_index].fd, &mask[read_length], 4 - read_length, 0)) > 0)
@@ -296,7 +291,7 @@ static void* poolFunc(void *arg){
 
 			msg[read_length] = 0;
 
-			while(read_length-- > -1)
+			while(read_length-- > 0)
 				msg[read_length] ^= mask[read_length%4];
 
 			// Sometimes the Tor Browser Bundle will randomly send "(null)"? I just skip these so that the browser doesn't spam the chat
@@ -416,8 +411,6 @@ static void* poolFunc(void *arg){
 				for(i=0; i<strlen(name); i++)
 					seed *= (unsigned char)name[i] - i;
 
-				printf("%u\n", seed);
-
 				pthread_mutex_lock(&randMutex);
 				srand(seed);
 				s_identity->identity->color = malloc(7);
@@ -468,6 +461,8 @@ static void* poolFunc(void *arg){
 				pthread_mutex_lock(&s_identity->identity->socket_node->identities_mutex);
 				bstInsert(s_identity, (void**)&s_identity->identity->socket_node->identities);
 				pthread_mutex_unlock(&s_identity->identity->socket_node->identities_mutex);
+
+				printf("%p %p\n", s_identity, s_identity->identity->socket_node->identities);
 
 				sprintf(buffer, "joined%c%s%c%s%c%s", 0, room, 0, name, 0, s_identity->identity->trip);
 				sendToSocket(buffer, 29 + strlen(name) + strlen(room), pollFDs[this->fd_index].fd);
@@ -581,14 +576,20 @@ static void* poolFunc(void *arg){
 				else{
 				}
 
+				printf("before: %p\n", identity_node->room_node->identities);
+
 				bstRemoveNode(socket_identity, (void**)&this_socket_node->identities);
 				bstRemoveNode(room_identity, (void**)&identity_node->room_node->identities);
+
+				printf("after: %p\n\n", identity_node->room_node->identities);
 
 				sendToSocket(msg, len.length, pollFDs[this->fd_index].fd);
 
 				char *buffer = malloc(6 + strlen(identity_node->name) + strlen(identity_node->trip));
 				sprintf(buffer, "bye%c%s%c%s", 0, identity_node->name, 0, identity_node->trip);
-				sendToRoom(buffer, 5 + strlen(identity_node->name) + strlen(identity_node->trip), identity_node->room_node);
+
+				if(identity_node->room_node->identities != NULL)
+					sendToRoom(buffer, 5 + strlen(identity_node->name) + strlen(identity_node->trip), identity_node->room_node);
 
 				free(buffer);
 				free(identity_node->name);

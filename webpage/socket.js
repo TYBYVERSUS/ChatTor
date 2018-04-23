@@ -1,6 +1,7 @@
 //var socket = new WebSocket('ws://'+window.location.host+':8080');
 var socket = new WebSocket('ws://127.0.0.1:8080');
 
+var invites = new Set();
 var browserFocused = true;
 var title = document.title;
 var unreadMessages = 0;
@@ -23,9 +24,8 @@ window.onfocus = function(){
 	browserFocused = true;
 	unreadMessages = 0;
 
-	if(document.title !== title && socket.readyState === 1){
+	if(document.title !== title && socket.readyState === 1)
 		document.title = title;
-	}
 }
 
 window.onblur = function(){
@@ -66,21 +66,25 @@ function cleanupMessages(div){
 	while(div.children.length > 100)
 		div.removeChild(div.firstElementChild);
 
-	if(div.parentNode.getElementsByClassName('options')[0].children[8].firstElementChild.checked)
+	var options = div.parentNode.getElementsByClassName('options')[0].children;
+
+	if(options[8].firstElementChild.checked)
 		div.scrollTop = sH;
 	else if(div.children.length === 100)
 		div.scrollTop -= sH - div.scrollHeight;
 
-	if(audio && div.parentNode.getElementsByClassName('options')[0].children[10].firstElementChild.checked)
+	if(audio && options[10].firstElementChild.checked && (!browserFocused || options[12].firstElementChild.checked))
 		audio.play();
 }
 
 socket.onopen = function(e){
 	document.querySelector('button[name="join"]').removeAttribute('disabled');
+	document.querySelector('button[name="join"]').textContent = 'Join!';
 }
 
 socket.onclose = function(e){
 	document.querySelector('button[name="join"]').setAttribute('disabled', 'disabled');
+	document.querySelector('button[name="join"]').textContent = 'Reconnecting...';
 }
 
 socket.onmessage = function(e){
@@ -128,6 +132,35 @@ socket.onmessage = function(e){
 			div.innerHTML = '<div>Tripcode Here</div><select><option value="">Invite To</option></select>';
 			li.appendChild(div);
 
+			div.lastElementChild.addEventListener('click', function(e){
+				this.innerHTML = '<option value="">Invite To</option>';
+
+				var elems = document.querySelectorAll('#rooms > div:not(.d_fault) .room_name');
+				var s = new Set();
+
+				for(var i=0; i<elems.length; i++){
+					if(elems[i].textContent === this.parentNode.parentNode.parentNode.previousElementSibling.previousElementSibling.textContent || s.has(elems[i].textContent))
+						continue;
+
+					s.add(elems[i].textContent);
+					var option = document.createElement('option');
+					option.textContent += elems[i].textContent;
+					this.appendChild(option);
+				}
+			});
+
+			div.lastElementChild.addEventListener('input', function(e){
+				var room = this.parentNode.parentNode.parentNode.parentNode.firstElementChild.textContent;
+				var to_room = this.selectedOptions[0].value;
+				var name = this.parentNode.previousElementSibling.textContent;
+
+				if(to_room === '')
+					return;
+
+				if(confirm('Are you sure you want to invite user "'+name+'" from room "'+room+'" to room "'+to_room+'"?'))
+					socket.send('invite\0'+room+'\0'+name+'\0'+to_room);
+			});
+
 			document.querySelector('[data-name="'+attrEncode(datas[4]+'\0'+datas[5])+'"]').parentNode.getElementsByClassName('userlist')[0].appendChild(li);
 			li.addEventListener('click', function(e){
 				this.classList.add('open');
@@ -172,6 +205,7 @@ socket.onmessage = function(e){
 							'<input type="text" placeholder="(reset)" /><button>Name Tab</button><br /><br />'+
 							'<label><input type="checkbox" checked="checked" />Auto Scroll</label><br />'+
 							'<label><input type="checkbox" />Message Sound</label><br />'+
+							'<label><input type="checkbox" />Sound Always</label><br />'+
 							'<label><input type="checkbox" />Notification Messages</label>'+
 						'</div>'+
 					'</div>'+
@@ -216,7 +250,17 @@ socket.onmessage = function(e){
 		break;
 
 		case 'invite':
-			console.log('you got an invite. Woo', e, datas);
+			document.getElementById('tabs').firstElementChild.classList.add('invited');
+			invites.add(datas[1]);
+
+			if(invites.size){
+				document.querySelector('[name="show_invite"]').style.display = 'inline';
+
+				if(invites.size > 1){
+					document.querySelector('[name="clear_invites"]').style.display = 'inline';
+					document.querySelector('[name="clear_invites"]').textContent = 'Clear '+invites.size+' Invites';
+				}
+			}
 		break;
 
 		case "error":
@@ -245,4 +289,30 @@ window.onload = function(){
 	});
 
 	document.getElementById('tabs').firstElementChild.addEventListener('click', tabClickFunc);
+	document.querySelector('[name="show_invite"]').addEventListener('click', function(e){
+		var invite = [...invites][0];
+		invites.delete(invite);
+
+		document.getElementById('room').value = invite;
+
+		if(!invites.size){
+			this.style.display = 'none';
+			document.getElementById('tabs').firstElementChild.classList.remove('invited');
+
+		}else{
+			if(invites.size === 1)
+				this.nextElementSibling.style.display = 'none';
+			else
+				this.nextElementSibling.textContent = 'Clear '+invites.size+' Invites';
+		}
+	});
+
+	document.querySelector('[name="clear_invites"]').addEventListener('click', function(e){
+		invites.clear();
+
+		document.getElementById('tabs').firstElementChild.classList.remove('invited');
+
+		this.style.display = 'none';
+		this.previousElementSibling.style.display = 'none';
+	});
 }

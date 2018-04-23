@@ -66,9 +66,9 @@ void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 	while(each->left != NULL)
 		each = each->left;
 
-	while(each != NULL){
-		printf("each: %p %p %p\n", each, each->left, each->right);
+	printf("leftest: %p\n", each);
 
+	while(each != NULL){
 		union websocketFrameLength len;
 		unsigned char offset;
 		char *encoded;
@@ -116,7 +116,10 @@ void sendToRoom(char *msg, uint64_t length, struct roomBST* rNode){
 
 		free(encoded);
 		each = bstNext(each);
+		printf("next: %p\n", each);
 	}
+
+	printf("\n");
 }
 
 // Close the socket

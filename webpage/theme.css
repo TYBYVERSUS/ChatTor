@@ -60,10 +60,19 @@ input[type="text"]:not([disabled]):focus{
 	border-color: #5F5;
 }
 
-.hide,
 #rooms > *:not(.selected),
 #new_tab_notification:empty{
 	display: none;
+}
+
+[name="show_invite"],
+[name="clear_invites"]{
+	border-color: #FF0;
+	display: none;
+}
+
+[name="clear_invites"]{
+	margin-left: 20px;
 }
 
 #body{
@@ -112,6 +121,11 @@ input[type="text"]:not([disabled]):focus{
 }
 
 #tabs > span.invited{
+	border-color: #880;
+	color: #880;
+}
+
+#tabs > span.invited.selected{
 	border-color: #FF0;
 	color: #FF0;
 }

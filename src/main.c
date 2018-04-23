@@ -142,13 +142,14 @@ int main(){
 	pollFDs = calloc(pollFDsLength, sizeof(struct pollfd));
 
 	//Set up the listener socket
-	unsigned char val = 1;
+	unsigned char *optval = malloc(1);
+	optval[0] = 1;
 	int listener_socket;
 	struct sockaddr_in listener_socket_sockaddr = {0};
 	struct timespec timespec_seed;
 
 	listener_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if(listener_socket < 0 || setsockopt(listener_socket, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), &val, sizeof(int)) < 0){
+	if(listener_socket < 0 || setsockopt(listener_socket, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), &optval, sizeof(int)) < 0){
 		printf("Socket creation failed\n");
 		exit(1);
 	}
@@ -211,7 +212,8 @@ int main(){
 	sigfillset(&signal_set);
 	sigaddset(&signal_set, SIGUSR1);
 
-	for(val=1;;){
+	unsigned char i=1;
+	for(;;){
 		pthread_mutex_init(&(thread->mutex), NULL);
 
 		thread->fd_index = -1;
@@ -231,7 +233,7 @@ int main(){
 			exit(1);
 		}
 
-		if(val++ < thread_count){
+		if(i++ < thread_count){
 			thread->next = malloc(sizeof(struct threadPool));
 			thread = thread->next;
 		}else{
