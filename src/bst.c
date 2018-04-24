@@ -261,7 +261,7 @@ void* bstSearch(void* index, unsigned int index_length, void* tree_root){
 	return (void*)root;
 }
 
-void bstRotateLeft(struct bstNode **root, struct bstNode *x){
+/*void bstRotateLeft(struct bstNode **root, struct bstNode *x){
 	struct bstNode *y = x->right;
 	x->right = y->left;
 
@@ -300,11 +300,49 @@ void bstRotateRight(struct bstNode **root, struct bstNode *x){
 	y->right = x;
 	x->parent = y;
 }
+*/
+
+void bstRotateLeft(struct bstNode *x){
+	x->parent->right = x->left;
+	if(x->left != NULL)
+		x->left->parent = x->parent;
+
+	x->left = x->parent;
+	x->left->color = bstRed;
+	x->parent = x->left->parent;
+	x->left->parent = x;
+
+	if(x->parent != NULL){
+		if(x->parent->left == x->left)
+			x->parent->left = x;
+		else
+			x->parent->right = x;
+	}
+}
+
+void bstRotateRight(struct bstNode *x){
+	x->parent->left = x->right;
+	if(x->right != NULL)
+		x->right->parent = x->parent;
+
+	x->right = x->parent;
+	x->right->color = bstRed;
+	x->parent = x->right->parent;
+	x->right->parent = x;
+
+	if(x->parent != NULL){
+		if(x->parent->left == x->right)
+			x->parent->left = x;
+		else
+			x->parent->right = x;
+	}
+
+}
 
 // RB-BST insert. O(log n). Inserted nodes will be painted red. Does not allow duplicates
 void bstInsert(void* new_node, void** tree_root){
 	int cmp_result;
-	struct bstNode *node = new_node, *uncle, **root = (struct bstNode**)tree_root;
+	struct bstNode *node = new_node, **root = (struct bstNode**)tree_root;
 
 	node->parent = *root;
 	node->left = NULL;
@@ -340,8 +378,107 @@ void bstInsert(void* new_node, void** tree_root){
 	node->color = bstRed;
 
 	// Cleanup to ensure n height
-	if(node->parent != NULL && node->parent->parent != NULL)
-		while(node->parent != NULL && node->parent->color == bstRed){
+	while(node != NULL && node->parent != NULL && node->color == bstRed && node->parent->color == bstRed){
+		printf("This node: %p %s\n", node, node->index);
+
+		if(node->parent->parent->left == node->parent){
+			if(node->parent->parent->right != NULL && node->parent->parent->right->color == bstRed){
+				printf("L r Pass down blackness\n");
+				node->parent->color = bstBlack;
+				node->parent->parent->right->color = bstBlack;
+
+				node->parent->parent->color = bstRed;
+				node = node->parent->parent;
+			}else{
+				if(node == node->parent->right){
+					if(node->parent == *tree_root)
+						*tree_root = node;
+
+					printf("root; %p\n", *tree_root);
+					printfBST(*tree_root, 0, 0);
+
+					printf("L R Rotate L then R\n");
+					printf("Left Rotate\n");
+					bstRotateLeft(node);
+
+					if(node->parent == *tree_root)
+						*tree_root = node;
+
+					node->color = bstBlack;
+					node->parent->color = bstRed;
+					bstRotateRight(node);
+					printfBST(*tree_root, 0, 0);
+					printf("Right Rotate\n");
+				}else{
+					printf("L L Rotate R\n");
+
+					if(node->parent->parent == *tree_root)
+						*tree_root = node->parent;
+
+					node->parent->color = bstBlack;
+					node->parent->parent->color = bstRed;
+					printfBST(*tree_root, 0, 0);
+					printf("Right Rotate\n");
+					bstRotateRight(node->parent);
+				}
+
+				node = node->parent;
+			}
+		}else{
+			if(node->parent->parent->left != NULL && node->parent->parent->left->color == bstRed){
+				printf("R r Pass down blackness\n");
+				node->parent->color = bstBlack;
+				node->parent->parent->left->color = bstBlack;
+
+				node->parent->parent->color = bstRed;
+				node = node->parent->parent;
+			}else{
+				if(node == node->parent->left){
+					if(node->parent == *tree_root)
+						*tree_root = node;
+
+					printf("root; %p\n", *tree_root);
+					printfBST(*tree_root, 0, 0);
+
+					printf("R L Rotate R then L\n");
+					printf("Rotate Right\n");
+					bstRotateRight(node);
+
+					if(node->parent == *tree_root)
+						*tree_root = node;
+
+					node->color = bstBlack;
+					node->parent->color = bstRed;
+					printfBST(*tree_root, 0, 0);
+					printf("Rotate Left\n");
+					bstRotateLeft(node->parent);
+				}else{
+					printf("R R Rotate L\n");
+
+					if(node->parent->parent == *tree_root)
+						*tree_root = node->parent;
+
+					node->parent->color = bstBlack;
+					node->parent->parent->color = bstRed;
+					printfBST(*tree_root, 0, 0);
+					printf("Rotate Left\n");
+					bstRotateLeft(node->parent);
+				}
+
+				node = node->parent;
+
+			}
+		}
+
+		printfBST(*tree_root, 0, 0);
+
+		printf("\n");
+	}
+
+	printf("Balanced\n\n");
+
+/*
+		if(node->parentNode->parentNode != NULL){
 			if(node->parent == node->parent->parent->left){
 				uncle = node->parent->parent->right;
 				if(uncle == NULL)
@@ -383,7 +520,7 @@ void bstInsert(void* new_node, void** tree_root){
 					bstRotateLeft(root, node->parent->parent);
 				}
 			}
-		}
+		}*/
 
 	(*root)->color = bstBlack;
 }
@@ -476,7 +613,7 @@ void bstTransplant(struct bstNode** root, struct bstNode* replace, struct bstNod
 
 // RB-Bst remove, O(log n)
 void bstRemoveNode(void* kill, void** tree_root){
-	if(kill == NULL)
+/*	if(kill == NULL)
 		return;
 
 	struct bstNode *new, *old = (struct bstNode*)kill;
@@ -582,5 +719,42 @@ void bstRemoveNode(void* kill, void** tree_root){
 		}
 	}
 
-	new->color = bstBlack;
+	new->color = bstBlack;*/
+}
+
+void printfBST(void* root, unsigned char depth, unsigned char blacks){
+	struct bstNode *node = (struct bstNode*)root;
+
+	if(node->color == bstBlack)
+		blacks++;
+
+	if(node->left != NULL)
+		printfBST(node->left, depth+1, blacks);
+
+	printf("depth: %hhu  %hhu node: %p   ", depth, blacks, node);
+
+	if(node->color == bstRed)
+		printf("r");
+	else
+		printf("b");
+
+	printf("   val: %s   p: %p", node->index, node->parent);
+
+	if(node->parent != NULL)
+		printf(" %s", node->parent->index);
+
+	printf("   l: %p", node->left);
+
+	if(node->left != NULL)
+		printf(" %s", node->left->index);
+
+	printf("   r: %p",  node->right);
+
+	if(node->right != NULL)
+		printf(" %s", node->right->index);
+
+	printf("\n");
+
+	if(node->right != NULL)
+		printfBST(node->right, depth+1, blacks);
 }

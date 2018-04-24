@@ -208,6 +208,7 @@ static void* poolFunc(void *arg){
 
 			pthread_mutex_lock(&socketsRootMutex);
 			bstInsert(socket_node, (void**)&socketsRoot);
+			printfBST(socketsRoot, 0, 0);
 			pthread_mutex_unlock(&socketsRootMutex);
 
 			goto threadpool_done_unlock;
